@@ -1,0 +1,356 @@
+@import 'tailwindcss';
+
+/* ───────────────────────────────────────────────────────────
+   Pieza Única — sistema de diseño "pop"
+   Colores saturados, bordes gruesos de tinta, sombras duras,
+   formas redondeadas y tipografía amable.
+   ─────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --font-sans: 'Nunito Variable', 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-ink: #1b1340;
+  --color-ink-soft: #4a4270;
+  --color-cream: #fff8ec;
+  --color-paper: #ffffff;
+
+  --color-pink: #ff4f9a;
+  --color-pink-soft: #ffd6e8;
+  --color-pink-deep: #c81e68;
+
+  --color-yellow: #ffc93c;
+  --color-yellow-soft: #fff0bd;
+
+  --color-teal: #12c8b4;
+  --color-teal-soft: #c8f4ee;
+  --color-teal-deep: #0a7a6d;
+
+  --color-violet: #7b5cff;
+  --color-violet-soft: #e4dcff;
+  --color-violet-deep: #5a3fe0;
+
+  --color-orange: #ff7a3d;
+  --color-orange-soft: #ffe0cf;
+
+  --color-sky: #4cc9ff;
+  --color-sky-soft: #d3f1ff;
+
+  --color-success: #0f7a56;
+  --color-success-soft: #cdf2e3;
+  --color-danger: #c81e3f;
+  --color-danger-soft: #ffd9e0;
+
+  --shadow-pop-sm: 2px 2px 0 0 var(--color-ink);
+  --shadow-pop: 4px 4px 0 0 var(--color-ink);
+  --shadow-pop-lg: 7px 7px 0 0 var(--color-ink);
+
+  --radius-pop: 1.5rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-violet);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  ::selection {
+    background: var(--color-yellow);
+    color: var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Contenedor de página */
+  .container-pop {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 640px) {
+    .container-pop {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  /* Botones */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.5rem;
+    min-height: 2.9rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    line-height: 1.1;
+    text-decoration: none;
+    color: var(--color-ink);
+    background: var(--color-paper);
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    box-shadow: var(--shadow-pop);
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    user-select: none;
+  }
+  .btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 0 var(--color-ink);
+  }
+  .btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--color-ink);
+  }
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: var(--shadow-pop);
+  }
+  .btn-primary {
+    background: var(--color-pink);
+  }
+  .btn-secondary {
+    background: var(--color-yellow);
+  }
+  .btn-teal {
+    background: var(--color-teal);
+  }
+  .btn-dark {
+    background: var(--color-ink);
+    color: var(--color-cream);
+    box-shadow: 4px 4px 0 0 var(--color-pink);
+  }
+  .btn-dark:hover {
+    box-shadow: 5px 5px 0 0 var(--color-pink);
+  }
+  .btn-danger {
+    background: var(--color-danger);
+    color: #fff;
+  }
+  .btn-sm {
+    padding: 0.45rem 1rem;
+    min-height: 2.4rem;
+    font-size: 0.95rem;
+    box-shadow: var(--shadow-pop-sm);
+  }
+  .btn-lg {
+    padding: 0.9rem 2rem;
+    min-height: 3.4rem;
+    font-size: 1.2rem;
+  }
+  .btn-block {
+    width: 100%;
+  }
+
+  /* Tarjetas */
+  .card {
+    background: var(--color-paper);
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-pop);
+    box-shadow: var(--shadow-pop);
+  }
+  .card-flat {
+    background: var(--color-paper);
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-pop);
+  }
+  .card-hover {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card-hover:hover {
+    transform: translate(-2px, -2px) rotate(-0.4deg);
+    box-shadow: var(--shadow-pop-lg);
+  }
+
+  /* Etiquetas / chips */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1.4;
+    color: var(--color-ink);
+    background: var(--color-yellow-soft);
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+  }
+
+  /* Formularios */
+  .label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+  }
+  .input,
+  .select,
+  .textarea {
+    width: 100%;
+    padding: 0.7rem 0.95rem;
+    min-height: 2.9rem;
+    color: var(--color-ink);
+    background: var(--color-paper);
+    border: 2px solid var(--color-ink);
+    border-radius: 1rem;
+    font: inherit;
+    transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+  .textarea {
+    min-height: 7rem;
+    resize: vertical;
+  }
+  .input::placeholder,
+  .textarea::placeholder {
+    color: #8a84a8;
+  }
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    outline: none;
+    border-color: var(--color-violet-deep);
+    box-shadow: 0 0 0 4px var(--color-violet-soft);
+  }
+  .input[aria-invalid='true'],
+  .select[aria-invalid='true'],
+  .textarea[aria-invalid='true'] {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 4px var(--color-danger-soft);
+  }
+  .field-error {
+    margin-top: 0.3rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-danger);
+  }
+  .field-hint {
+    margin-top: 0.3rem;
+    font-size: 0.9rem;
+    color: var(--color-ink-soft);
+  }
+
+  /* Decoración */
+  .bg-dots {
+    background-image: radial-gradient(var(--color-ink) 1.2px, transparent 1.2px);
+    background-size: 22px 22px;
+    background-color: var(--color-cream);
+  }
+  .bg-dots-soft {
+    background-image: radial-gradient(rgba(27, 19, 64, 0.16) 1.4px, transparent 1.4px);
+    background-size: 20px 20px;
+  }
+  .sticker {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    background: var(--color-yellow);
+    border: 2px solid var(--color-ink);
+    border-radius: 0.9rem;
+    box-shadow: var(--shadow-pop-sm);
+    transform: rotate(-2deg);
+  }
+  .squiggle-underline {
+    text-decoration: underline wavy var(--color-pink);
+    text-decoration-thickness: 4px;
+    text-underline-offset: 8px;
+  }
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    z-index: 100;
+    padding: 0.6rem 1rem;
+    background: var(--color-ink);
+    color: var(--color-cream);
+    border-radius: 0.75rem;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus {
+    top: 1rem;
+  }
+
+  /* Texto legal / documentos largos */
+  .prose-pop {
+    max-width: 70ch;
+  }
+  .prose-pop h2 {
+    margin: 2.2rem 0 0.7rem;
+    font-size: 1.6rem;
+  }
+  .prose-pop h3 {
+    margin: 1.6rem 0 0.5rem;
+    font-size: 1.25rem;
+  }
+  .prose-pop p,
+  .prose-pop ul,
+  .prose-pop ol {
+    margin: 0.8rem 0;
+  }
+  .prose-pop ul {
+    list-style: disc;
+    padding-left: 1.4rem;
+  }
+  .prose-pop ol {
+    list-style: decimal;
+    padding-left: 1.4rem;
+  }
+  .prose-pop a {
+    color: var(--color-violet-deep);
+    font-weight: 700;
+  }
+}
