@@ -365,11 +365,16 @@ export async function updateOrderStatus(
   const now = nowIso()
   const tracking = opts.trackingCode?.trim() || order.trackingCode
   const carrier = opts.carrier?.trim() || order.carrier
+  // Pasar a "pagado" a mano (p. ej. transferencia) también deja constancia del cobro.
+  const markCaptured = status === 'paid' && order.status === 'pending_payment'
   await db.batch(
     [
       {
-        sql: `UPDATE orders SET status = ?, tracking_code = ?, carrier = ?, updated_at = ? WHERE id = ?`,
-        args: [status, tracking, carrier, now, orderId],
+        sql: markCaptured
+          ? `UPDATE orders SET status = ?, tracking_code = ?, carrier = ?, updated_at = ?,
+               payment_status = 'captured', paid_at = COALESCE(paid_at, ?) WHERE id = ?`
+          : `UPDATE orders SET status = ?, tracking_code = ?, carrier = ?, updated_at = ? WHERE id = ?`,
+        args: markCaptured ? [status, tracking, carrier, now, now, orderId] : [status, tracking, carrier, now, orderId],
       },
       {
         sql: `INSERT INTO order_events (order_id, status, note, actor, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -407,8 +412,8 @@ export async function addOrderEvent(orderId: string, note: string, actor: OrderA
 }
 
 export interface ListOrdersOptions {
-  /** Un estado concreto, "all" (todos) o "open" (pagados y aún sin entregar). */
-  status?: OrderStatus | 'all' | 'open'
+  /** Un estado concreto, "all" (todos), "open" (pagados y aún sin entregar) o "active" (pagados pendientes de producir/enviar). */
+  status?: OrderStatus | 'all' | 'open' | 'active'
   /** Búsqueda por número de pedido, nombre, email o empresa. */
   q?: string
   limit?: number
@@ -424,6 +429,7 @@ export async function listOrders(opts: ListOrdersOptions = {}): Promise<{ rows: 
 
   if (opts.status && opts.status !== 'all') {
     if (opts.status === 'open') where.push(`status IN ('paid','in_production','ready','shipped')`)
+    else if (opts.status === 'active') where.push(`status IN ('paid','in_production','ready')`)
     else {
       where.push(`status = ?`)
       args.push(opts.status)

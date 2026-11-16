@@ -7,7 +7,7 @@ import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/auth-token'
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (pathname === '/admin/login' || pathname === '/api/admin/login') {
+  if (pathname === '/admin/login' || pathname === '/api/admin/login' || pathname === '/api/admin/logout') {
     const res = NextResponse.next()
     res.headers.set('X-Robots-Tag', 'noindex, nofollow')
     return res

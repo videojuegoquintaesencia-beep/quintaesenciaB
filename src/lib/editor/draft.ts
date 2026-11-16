@@ -1,0 +1,51 @@
+/** Borrador del diseño en localStorage (uno por producto). */
+import { getProduct, type ProductId } from '@/config/products'
+import { parseDesign, type Design } from '@/lib/design'
+import { DRAFT_PREFIX } from './constants'
+
+export interface Draft {
+  design: Design
+  sizes: Record<string, number>
+}
+
+const key = (productId: ProductId) => `${DRAFT_PREFIX}${productId}`
+
+export function cleanSizes(productId: ProductId, raw: unknown): Record<string, number> | null {
+  const product = getProduct(productId)
+  if (!product || !raw || typeof raw !== 'object') return null
+  const out: Record<string, number> = {}
+  for (const size of product.sizes) {
+    const q = (raw as Record<string, unknown>)[size.id]
+    if (typeof q === 'number' && Number.isInteger(q) && q > 0) out[size.id] = Math.min(q, product.maxQtyPerLine)
+  }
+  return out
+}
+
+export function loadDraft(productId: ProductId): Draft | null {
+  try {
+    const raw = localStorage.getItem(key(productId))
+    if (!raw) return null
+    const data = JSON.parse(raw) as { design?: unknown; sizes?: unknown }
+    const checked = parseDesign(data.design)
+    if (!checked.ok || checked.design.productId !== productId) return null
+    return { design: checked.design, sizes: cleanSizes(productId, data.sizes) ?? {} }
+  } catch {
+    return null
+  }
+}
+
+export function saveDraft(productId: ProductId, draft: Draft): void {
+  try {
+    localStorage.setItem(key(productId), JSON.stringify({ v: 1, savedAt: Date.now(), ...draft }))
+  } catch {
+    // Almacenamiento lleno o bloqueado: el diseño sigue en memoria.
+  }
+}
+
+export function clearDraft(productId: ProductId): void {
+  try {
+    localStorage.removeItem(key(productId))
+  } catch {
+    // nada que hacer
+  }
+}

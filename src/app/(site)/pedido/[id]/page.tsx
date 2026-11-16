@@ -1,0 +1,152 @@
+import { PartyPopper } from 'lucide-react'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { OrderAutoRefresh } from '@/components/checkout/OrderAutoRefresh'
+import { OrderItems } from '@/components/checkout/OrderItems'
+import { OrderTimeline } from '@/components/checkout/OrderTimeline'
+import { Badge } from '@/components/ui/Badge'
+import { ButtonLink } from '@/components/ui/Button'
+import { site } from '@/config/site'
+import { formatDateTime } from '@/lib/format'
+import { isValidId } from '@/lib/ids'
+import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from '@/lib/order-status'
+import { getOrderByToken, type Order } from '@/lib/orders'
+
+export const metadata: Metadata = {
+  title: 'Tu pedido',
+  robots: { index: false, follow: false },
+  // El enlace lleva un token secreto: que no viaje en la cabecera Referer a otras webs.
+  referrer: 'no-referrer',
+}
+
+/** Se considera "recién pagado" durante las 3 horas siguientes al pago. */
+const JUST_PAID_MS = 3 * 3600_000
+
+function justPaid(order: Order): boolean {
+  return order.status === 'paid' && !!order.payment.paidAt && Date.now() - new Date(order.payment.paidAt).getTime() < JUST_PAID_MS
+}
+
+export default async function OrderPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ t?: string | string[] }>
+}) {
+  const [{ id }, { t }] = await Promise.all([params, searchParams])
+  if (!isValidId(id) || typeof t !== 'string' || t.length < 10) notFound()
+  const order = await getOrderByToken(id, t)
+  if (!order) notFound()
+
+  const thanks = justPaid(order)
+  const pending = order.status === 'pending_payment'
+  const a = order.shipping
+
+  return (
+    <div className="container-pop py-10 sm:py-14">
+      {pending && <OrderAutoRefresh />}
+
+      <header className={thanks ? 'card bg-teal-soft p-6 sm:p-8' : 'pb-2'}>
+        {thanks && (
+          <p className="sticker mb-4 inline-flex items-center gap-2 text-sm">
+            <PartyPopper size={18} aria-hidden="true" /> Pago recibido
+          </p>
+        )}
+        <h1 className="text-4xl sm:text-5xl">
+          {thanks ? `¡Gracias, ${order.customerName.trim().split(/\s+/)[0]}!` : `Pedido ${order.number}`}
+        </h1>
+        <p className="mt-3 flex flex-wrap items-center gap-3 text-lg">
+          {thanks && <span>Tu pedido <strong>{order.number}</strong> está confirmado.</span>}
+          <Badge tone={ORDER_STATUS_TONE[order.status]}>{ORDER_STATUS_LABEL[order.status]}</Badge>
+        </p>
+        <p className="mt-3 max-w-2xl text-ink-soft">
+          {thanks
+            ? `Te hemos enviado la confirmación a ${order.email}. Producimos tu pedido en ${site.production.leadDaysMin}-${site.production.leadDaysMax} días laborables y después sale por ${site.shipping.carrierLabel}.`
+            : ORDER_STATUS_CUSTOMER_TEXT[order.status]}
+        </p>
+        {order.payment.provider === 'demo' && (
+          <p className="mt-3 inline-block rounded-2xl border-2 border-ink bg-yellow-soft px-3 py-2 text-sm font-bold">
+            Pedido de demostración: el pago ha sido simulado y no se ha cobrado nada.
+          </p>
+        )}
+      </header>
+
+      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_380px]">
+        <div className="space-y-6">
+          <section className="card p-5 sm:p-6" aria-labelledby="pedido-productos">
+            <h2 id="pedido-productos" className="mb-4 text-2xl">
+              Tu pedido
+            </h2>
+            <OrderItems order={order} />
+          </section>
+
+          <section className="card p-5 sm:p-6" aria-labelledby="pedido-envio">
+            <h2 id="pedido-envio" className="mb-3 text-2xl">
+              Envío
+            </h2>
+            <address className="not-italic leading-relaxed">
+              <strong>{a.name}</strong>
+              <br />
+              {a.line1}
+              {a.line2 ? (
+                <>
+                  <br />
+                  {a.line2}
+                </>
+              ) : null}
+              <br />
+              {a.postalCode} {a.city} ({a.province})
+            </address>
+            {order.trackingCode ? (
+              <p className="mt-4 rounded-2xl border-2 border-ink bg-teal-soft p-3">
+                <strong>Seguimiento del envío:</strong> {order.carrier ?? 'Mensajería'} ·{' '}
+                <span className="font-mono">{order.trackingCode}</span>
+              </p>
+            ) : (
+              <p className="mt-4 text-sm text-ink-soft">
+                Cuando enviemos tu pedido verás aquí el código de seguimiento y te avisaremos por email.
+              </p>
+            )}
+            {(order.company || order.taxId) && (
+              <p className="mt-4 text-sm text-ink-soft">
+                Datos de facturación: {[order.company, order.taxId].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {order.customerNote && <p className="mt-2 text-sm text-ink-soft">Tu nota: {order.customerNote}</p>}
+          </section>
+        </div>
+
+        <div className="space-y-6">
+          <section className="card p-5 sm:p-6" aria-labelledby="pedido-estado">
+            <h2 id="pedido-estado" className="mb-4 text-2xl">
+              Estado del pedido
+            </h2>
+            <OrderTimeline order={order} />
+            <p className="mt-4 text-xs text-ink-soft">
+              Pedido realizado el {formatDateTime(order.createdAt)}
+              {order.payment.paidAt ? ` · pagado el ${formatDateTime(order.payment.paidAt)}` : ''}
+            </p>
+          </section>
+
+          <section className="card bg-yellow-soft p-5 sm:p-6" aria-labelledby="pedido-dudas">
+            <h2 id="pedido-dudas" className="text-2xl">
+              ¿Dudas?
+            </h2>
+            <p className="mt-2">
+              Escríbenos indicando tu número de pedido <strong>{order.number}</strong> y te ayudamos.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <ButtonLink href="/contacto" variant="primary" size="sm">
+                Contactar
+              </ButtonLink>
+              <Link href="/preguntas-frecuentes" className="btn btn-sm">
+                Preguntas frecuentes
+              </Link>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}

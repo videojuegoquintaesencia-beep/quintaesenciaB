@@ -1,76 +1,83 @@
 /**
- * Mockups SVG de producto.  (PLACEHOLDER mínimo: el agente de mockups lo sustituye por la
- * librería de ilustraciones real, manteniendo estas exportaciones.)
+ * Mockups SVG de producto: ilustraciones planas "pop" de cada producto y vista del catálogo.
  *
- * Contrato:
  *  - mockupSvg({ productId, viewId, colorHex, guides? }) → string con un <svg> completo (viewBox de la vista).
- *      · Debe funcionar al convertirlo en <img src="data:image/svg+xml…"> y al pintarlo en un <canvas> (Konva):
- *        sin CSS externo, sin fuentes web, sin mix-blend-mode ni filtros que el canvas no soporte.
+ *      · Autocontenido: sin <style>, sin clases, sin filtros, sin fuentes ni referencias externas, así que
+ *        se ve igual en línea, como <img src="data:…"> y pintado en un <canvas> (Konva).
  *      · guides=true dibuja además el contorno de las zonas de estampado (para el editor).
+ *      · En las tazas, `colorHex` es el color del interior y el asa; el cuerpo es siempre blanco y la vista
+ *        "wrap" es la plantilla desplegada.
  *  - mockupDataUrl(opts) → "data:image/svg+xml;charset=utf-8,…"
- *  - <ProductMockup productId viewId? colorId? className? /> → componente React (SVG en línea) para catálogo.
- *  - <ProductShowcase productId viewId? colorId? variant? className? /> → igual, pero con un diseño de ejemplo estampado.
+ *  - <ProductMockup productId viewId? colorId? className? label? variant? guides? /> → SVG en línea para catálogo.
+ *  - <ProductShowcase … variant? art? /> → igual, con un diseño de ejemplo estampado en la zona principal.
+ *      `variant` es el índice del diseño (0 … SAMPLE_ART_VARIANTS − 1) o "icon" para la ilustración de catálogo.
+ *
+ * Los ids internos (degradados, recortes) incluyen producto, vista, color y diseño: son deterministas y no chocan
+ * al repetir mockups en la misma página.
  */
 import { getColor, getProduct, getView, type ProductId } from '@/config/products'
+import { SAMPLE_ART_VARIANTS } from './art'
+import { buildMockup, mockupDataUrl, mockupSvg } from './engine'
+import type { MockupOptions } from './types'
 
-export interface MockupOptions {
-  productId: ProductId
-  viewId: string
-  colorHex: string
-  guides?: boolean
-}
-
-export function mockupSvg({ productId, viewId, colorHex, guides }: MockupOptions): string {
-  const product = getProduct(productId)
-  const view = product ? getView(product, viewId) : undefined
-  const { width, height } = view?.viewBox ?? { width: 600, height: 700 }
-  const areas = (view?.areas ?? [])
-    .map((a) => {
-      const w = a.widthCm * (view?.pxPerCm ?? 8)
-      const h = a.heightCm * (view?.pxPerCm ?? 8)
-      return guides
-        ? `<rect x="${a.center.x - w / 2}" y="${a.center.y - h / 2}" width="${w}" height="${h}" fill="none" stroke="#1b1340" stroke-width="2" stroke-dasharray="8 6"/>`
-        : ''
-    })
-    .join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><rect x="${width * 0.1}" y="${height * 0.1}" width="${width * 0.8}" height="${height * 0.8}" rx="40" fill="${colorHex}" stroke="#1b1340" stroke-width="4"/>${areas}</svg>`
-}
-
-export function mockupDataUrl(opts: MockupOptions): string {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(mockupSvg(opts))}`
-}
+export { mockupDataUrl, mockupSvg, SAMPLE_ART_VARIANTS }
+export type { MockupOptions }
 
 export interface ProductMockupProps {
   productId: ProductId
   viewId?: string
   colorId?: string
+  /** Se aplica al <svg>: p. ej. "h-auto w-full". */
   className?: string
-  /** Texto alternativo; por defecto describe el producto. */
+  /** Texto alternativo; por defecto describe el producto. Con "" la ilustración es decorativa. */
   label?: string
+  /** "icon": ilustración de catálogo (solo cambia las tazas; el resto usa la primera vista). */
+  variant?: 'icon'
+  /** Dibuja el contorno de las zonas de estampado. */
+  guides?: boolean
 }
 
-export function ProductMockup({ productId, viewId, colorId, className, label }: ProductMockupProps) {
+export interface ProductShowcaseProps extends Omit<ProductMockupProps, 'variant'> {
+  /** Índice del diseño de ejemplo (0, 1, 2…), o "icon" para la ilustración de catálogo. */
+  variant?: number | 'icon'
+  /** Diseño de ejemplo cuando `variant` es "icon". */
+  art?: number
+}
+
+function render(props: ProductMockupProps, art: number | undefined) {
+  const { productId, viewId, colorId, className, label, variant, guides } = props
   const product = getProduct(productId)
   if (!product) return null
-  const view = (viewId && getView(product, viewId)) || product.views[0]
+  const icon = variant === 'icon'
+  const explicitView = !icon && viewId ? getView(product, viewId) : undefined
+  const view = explicitView ?? product.views[0]
   const color = (colorId && getColor(product, colorId)) || product.colors[0]
+  const built = buildMockup({ productId, viewId: view.id, colorHex: color.hex, guides, art, icon })
+  if (!built) return null
+
+  const colorText = productId === 'taza' ? ` ${color.name.toLowerCase()}` : `, color ${color.name.toLowerCase()}`
+  const alt =
+    label ??
+    `${product.name}${colorText}${explicitView ? `, vista ${view.label.toLowerCase()}` : ''}${art === undefined ? '' : ', con un diseño de ejemplo'}`
+  const a11y = alt ? ({ role: 'img', 'aria-label': alt } as const) : ({ 'aria-hidden': true } as const)
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox={`0 0 ${built.width} ${built.height}`}
       className={className}
-      src={mockupDataUrl({ productId, viewId: view.id, colorHex: color.hex })}
-      alt={label ?? `${product.name} ${color.name.toLowerCase()}`}
-      width={view.viewBox.width}
-      height={view.viewBox.height}
+      focusable="false"
+      {...a11y}
+      dangerouslySetInnerHTML={{ __html: built.body }}
     />
   )
 }
 
-export interface ProductShowcaseProps extends ProductMockupProps {
-  /** Variante del diseño de ejemplo (0, 1, 2…). */
-  variant?: number
+export function ProductMockup(props: ProductMockupProps) {
+  return render(props, undefined)
 }
 
-export function ProductShowcase(props: ProductShowcaseProps) {
-  return <ProductMockup {...props} />
+export function ProductShowcase({ variant, art, ...rest }: ProductShowcaseProps) {
+  const design = typeof variant === 'number' ? variant : (art ?? 0)
+  return render({ ...rest, variant: variant === 'icon' ? 'icon' : undefined }, design)
 }

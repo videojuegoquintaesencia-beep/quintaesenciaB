@@ -20,9 +20,19 @@ export function rateLimit(key: string, limit: number, windowMs: number): { ok: b
   return { ok: true, retryAfterSec: 0 }
 }
 
-/** IP del cliente a partir de las cabeceras habituales de proxy. */
+/**
+ * IP del cliente. Un cliente puede inventarse el principio de `X-Forwarded-For`, pero cada proxy
+ * de confianza añade al FINAL la IP de quien le conectó. Por eso se cuenta desde el final:
+ * `TRUSTED_PROXY_HOPS` (por defecto 1) es el número de proxies propios delante de la app
+ * (0 = sin proxy: se ignoran las cabeceras y todo cuenta como una sola IP).
+ */
 export function clientIp(req: Request): string {
-  const fwd = req.headers.get('x-forwarded-for')
-  if (fwd) return fwd.split(',')[0].trim()
-  return req.headers.get('x-real-ip') ?? 'local'
+  const hops = Math.max(0, Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? '1', 10) || 0)
+  if (hops === 0) return 'local'
+  const parts = (req.headers.get('x-forwarded-for') ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  if (parts.length > 0) return parts[Math.max(0, parts.length - hops)]
+  return req.headers.get('x-real-ip')?.trim() || 'local'
 }

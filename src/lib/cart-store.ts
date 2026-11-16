@@ -3,6 +3,7 @@
  * Carrito de la compra (cliente). Se guarda en localStorage; los archivos (previews, impresión,
  * artes) ya están subidos al servidor y aquí solo se guardan sus ids.
  */
+import { useSyncExternalStore } from 'react'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { ProductId } from '@/config/products'
@@ -58,14 +59,25 @@ export const useCart = create<CartState>()(
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ lines: s.lines }),
+      // La lectura de localStorage es síncrona y ocurre mientras `useCart` aún se está creando:
+      // marcar el estado en un microtask evita referenciar el store antes de que exista.
       onRehydrateStorage: () => () => {
-        useCart.setState({ hydrated: true })
+        queueMicrotask(() => useCart.setState({ hydrated: true }))
       },
     },
   ),
 )
 
-/** Unidades totales en el carrito (0 hasta hidratar). */
+const subscribeNoop = () => () => {}
+
+/** true solo en el cliente, ya montado (en el servidor y durante la hidratación es false). */
+export function useIsMounted(): boolean {
+  return useSyncExternalStore(subscribeNoop, () => true, () => false)
+}
+
+/** Unidades totales en el carrito (0 en el servidor y durante la hidratación). */
 export function useCartCount(): number {
-  return useCart((s) => (s.hydrated ? s.lines.reduce((n, l) => n + Object.values(l.sizes).reduce((a, b) => a + b, 0), 0) : 0))
+  const mounted = useIsMounted()
+  const units = useCart((s) => s.lines.reduce((n, l) => n + Object.values(l.sizes).reduce((a, b) => a + b, 0), 0))
+  return mounted ? units : 0
 }
