@@ -65,7 +65,7 @@ const SECTIONS: LegalSection[] = [
     content: (
       <>
         <p>
-          Los textos, imágenes, ilustraciones, mockups, logotipos, el diseño de la web y su código pertenecen al titular o se
+          Los textos, imágenes, ilustraciones, simulaciones de producto, logotipos, el diseño de la web y su código pertenecen al titular o se
           utilizan con licencia. No puedes reproducirlos, distribuirlos ni modificarlos sin autorización previa y por escrito,
           salvo lo que permita la ley.
         </p>
@@ -91,7 +91,7 @@ const SECTIONS: LegalSection[] = [
           causas ajenas a nosotros.
         </p>
         <p>
-          Los mockups y las vistas previas son una representación orientativa: el color real puede variar ligeramente según tu
+          Las simulaciones y las vistas previas son una representación orientativa: el color real puede variar ligeramente según tu
           pantalla y el resultado de la impresión.
         </p>
       </>

@@ -94,6 +94,28 @@ export function readPngHeader(head: Uint8Array): { width: number; height: number
   return width > 0 && height > 0 ? { width, height } : null
 }
 
+/**
+ * Resolución (ppp) anotada en un PNG (chunk pHYs en metros), o null si no la lleva. Basta con el comienzo del
+ * archivo: pHYs debe ir antes de IDAT, y en los archivos del editor va justo detrás de IHDR.
+ */
+export function readPngDpi(head: Uint8Array): number | null {
+  if (readPngHeader(head) === null) return null
+  let pos = 8 + 25
+  while (pos + 12 <= head.length) {
+    const len = u32(head, pos)
+    const type = u32(head, pos + 4)
+    if (type === 0x70485973) {
+      // pHYs: 4 bytes por metro en X, 4 en Y y 1 de unidad (1 = metro)
+      if (len !== 9 || pos + 8 + 9 > head.length || head[pos + 16] !== 1) return null
+      const perMeter = u32(head, pos + 8)
+      return perMeter > 0 ? Math.round(perMeter * 0.0254) : null
+    }
+    if (type === 0x49444154) return null // IDAT: ya no puede haber pHYs
+    pos += 12 + len
+  }
+  return null
+}
+
 /* ───────────── JPEG ───────────── */
 
 function inspectJpeg(bytes: Uint8Array): ImageInfo | null {

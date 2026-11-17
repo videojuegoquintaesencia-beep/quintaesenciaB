@@ -42,7 +42,7 @@ export function Hero() {
   const maxDiscount = Math.max(...QUANTITY_DISCOUNTS.map((d) => d.pct))
   const facts = [
     'Sin mínimo de unidades',
-    `Producción en ${site.production.leadDaysMin}–${site.production.leadDaysMax} días laborables`,
+    `Producción de ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables`,
     `Envío gratis desde ${formatEUR(site.shipping.freeFromCents, { compact: true })}`,
   ]
   return (
@@ -55,7 +55,7 @@ export function Hero() {
           </h1>
           <p className="mt-6 max-w-xl text-lg text-ink-soft sm:text-xl">
             Sube tu logo o tu foto, añade texto y pegatinas y mira cómo queda antes de pedir. Lo imprimimos con colores vivos y te lo
-            enviamos a casa. Y si pides muchas unidades, tienes descuentos de hasta un {maxDiscount} %.
+            enviamos a casa. Y si pides muchas unidades, tienes descuentos de hasta un {maxDiscount}&nbsp;%.
           </p>
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
             <Link href="/personalizar" className="btn btn-primary btn-lg">

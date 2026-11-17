@@ -38,7 +38,7 @@ function specific(product: Product): Faq {
     case 'taza':
       return {
         question: '¿Puedo elegir el color del interior y del asa?',
-        answer: `Sí. El cuerpo de la taza es siempre blanco y el diseño envuelve toda la superficie (hasta ${sizeLabel(areas[0].widthCm, areas[0].heightCm)}). Las opciones con interior y asa de color suman ${formatEUR(product.colors.find((c) => c.surchargeCents)?.surchargeCents ?? 0)} por unidad.`,
+        answer: `Sí. El cuerpo de la taza es siempre blanco y el diseño envuelve la taza (hasta ${sizeLabel(areas[0].widthCm, areas[0].heightCm)}). Las opciones con interior y asa de color suman ${formatEUR(product.colors.find((c) => c.surchargeCents)?.surchargeCents ?? 0)} por unidad.`,
       }
   }
 }
@@ -48,7 +48,8 @@ export function productFaqs(product: Product): Faq[] {
   const discounts = QUANTITY_DISCOUNTS.filter((d) => d.pct > 0)
   const first = discounts[0]
   const last = discounts[discounts.length - 1]
-  const formats = site.uploads.acceptedArtworkTypes.map((t) => FORMAT_NAMES[t] ?? t).join(', ')
+  const names = site.uploads.acceptedArtworkTypes.map((t) => FORMAT_NAMES[t] ?? t)
+  const formats = names.length > 1 ? `${names.slice(0, -1).join(', ')} o ${names[names.length - 1]}` : names.join('')
   const maxMb = Math.round(site.uploads.maxArtworkBytes / (1024 * 1024))
 
   return [
@@ -56,7 +57,7 @@ export function productFaqs(product: Product): Faq[] {
     {
       question: '¿Hay un mínimo de unidades?',
       answer: first
-        ? `No, puedes pedir una sola unidad. Si pides varias iguales, aplicamos un descuento desde ${first.minQty} unidades (${first.pct} %) que sube hasta el ${last.pct} % desde ${last.minQty} unidades.`
+        ? `No, puedes pedir una sola unidad. Si pides varias iguales, aplicamos un descuento desde ${first.minQty} unidades (${first.pct}\u00a0%) que sube hasta el ${last.pct}\u00a0% desde ${last.minQty} unidades.`
         : 'No, puedes pedir una sola unidad.',
     },
     {

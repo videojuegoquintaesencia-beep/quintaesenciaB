@@ -9,6 +9,7 @@ import { Pagination } from '@/components/admin/Pagination'
 import { QuotesList } from '@/components/admin/QuotesList'
 import { SearchForm } from '@/components/admin/SearchForm'
 import { Tabs } from '@/components/admin/Tabs'
+import { statusesForKind } from '@/lib/order-status'
 import { listQuotes } from '@/lib/quotes'
 import { requireAdmin } from '@/lib/auth'
 import { hrefWith, type SearchParams } from '@/lib/admin/params'
@@ -52,7 +53,12 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const totalPages = Math.max(1, Math.ceil(result.total / QUOTES_PAGE_SIZE))
   if (page > totalPages) redirect(link({ pagina: totalPages }))
 
-  const chips: Chip[] = STATUS_CHIPS.map((c) => ({ key: c.key, label: c.label, href: link({ estado: c.key }) }))
+  const allowed = new Set<string>(['active', 'all', ...statusesForKind(kind)])
+  const chips: Chip[] = STATUS_CHIPS.filter((c) => allowed.has(c.key)).map((c) => ({
+    key: c.key,
+    label: c.label,
+    href: link({ estado: c.key }),
+  }))
   const noun = kind === 'quote' ? 'presupuestos' : 'mensajes'
   const hasFilters = q !== '' || status !== 'active'
 
@@ -78,7 +84,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           action={BASE}
           value={q}
           label={`Buscar entre los ${noun}`}
-          placeholder="Nombre, email o empresa"
+          placeholder="Referencia, nombre, email o mensaje"
           hidden={{
             tipo: tab === 'presupuestos' ? undefined : tab,
             estado: status === 'active' ? undefined : status,

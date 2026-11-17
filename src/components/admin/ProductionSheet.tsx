@@ -181,7 +181,7 @@ export function ProductionSheet({ order }: { order: Order }) {
           <p className="mt-2 text-xl">Tel. {order.phone}</p>
         </address>
         <p className="mt-4 border-t-2 border-black pt-2 text-sm">
-          Remite: {site.name} · {site.contact.address} · {site.contact.phone}
+          Remite: {[site.name, site.contact.address || site.business.registeredAddress, site.contact.phone].filter(Boolean).join(' · ')}
         </p>
       </section>
 

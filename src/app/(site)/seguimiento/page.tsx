@@ -6,7 +6,8 @@ import { site } from '@/config/site'
 export const metadata: Metadata = {
   title: 'Seguimiento de pedido',
   description: 'Consulta el estado de tu pedido con tu número de pedido y tu email.',
-  alternates: { canonical: '/seguimiento' },
+  // Página de uso privado: no se indexa (y no hay que bloquearla en robots.txt para que los buscadores vean este noindex).
+  robots: { index: false, follow: true },
 }
 
 export default function TrackingPage() {

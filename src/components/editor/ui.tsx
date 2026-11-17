@@ -222,6 +222,7 @@ export function NumberField({
 /** Selector de cantidad con − y +. */
 export function Stepper({
   label,
+  unit,
   value,
   onChange,
   min = 0,
@@ -229,6 +230,8 @@ export function Stepper({
   compact,
 }: {
   label: string
+  /** Lo que se suma o resta, en singular, para los botones ("Añadir una unidad de taza"); por defecto, `label`. */
+  unit?: string
   value: number
   onChange: (n: number) => void
   min?: number
@@ -242,7 +245,7 @@ export function Stepper({
       <button
         type="button"
         className="inline-flex size-11 items-center justify-center rounded-full border-2 border-ink bg-paper hover:bg-yellow-soft disabled:opacity-40 disabled:hover:bg-paper lg:size-8"
-        aria-label={`Quitar una unidad de ${label}`}
+        aria-label={`Quitar una unidad de ${unit ?? label}`}
         disabled={value <= min}
         onClick={() => onChange(value - 1)}
       >
@@ -262,7 +265,7 @@ export function Stepper({
       <button
         type="button"
         className="inline-flex size-11 items-center justify-center rounded-full border-2 border-ink bg-paper hover:bg-yellow-soft disabled:opacity-40 disabled:hover:bg-paper lg:size-8"
-        aria-label={`Añadir una unidad de ${label}`}
+        aria-label={`Añadir una unidad de ${unit ?? label}`}
         disabled={max !== undefined && value >= max}
         onClick={() => onChange(value + 1)}
       >

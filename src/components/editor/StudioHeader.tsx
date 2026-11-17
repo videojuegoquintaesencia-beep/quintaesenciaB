@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { ArrowLeft, ShoppingCart } from 'lucide-react'
 import { site } from '@/config/site'
+import { LogoMark } from '@/components/site/Logo'
 import { useSyncExternalStore } from 'react'
 import { useCart } from '@/lib/cart-store'
 
@@ -17,8 +18,10 @@ export function StudioHeader() {
   const count = mounted ? units : 0
   return (
     <header className="flex h-12 shrink-0 sm:h-14 items-center gap-2 border-b-2 border-ink bg-paper px-3 sm:gap-4 sm:px-5">
-      <Link href="/" className="inline-flex min-h-11 items-center rounded-xl font-display text-xl font-bold leading-none tracking-tight sm:text-2xl">
-        {site.name}
+      <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-xl font-display text-xl font-bold leading-none tracking-tight sm:text-2xl">
+        <LogoMark size={32} />
+        {/* En pantallas de 320 px solo se ve la marca; el nombre sigue siendo el nombre accesible del enlace. */}
+        <span className="max-[22rem]:sr-only">{site.name}</span>
       </Link>
       <Link
         href="/productos"

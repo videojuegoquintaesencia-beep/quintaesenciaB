@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { site } from '@/config/site'
+import { isPlaceholderValue, site } from '@/config/site'
 
 /**
- * Dato del titular. Si sigue siendo un marcador "[COMPLETAR: …]" se resalta para que el dueño del negocio
- * lo vea antes de publicar la web.
+ * Dato del titular. Si sigue siendo un marcador "[COMPLETAR: …]" (o un email de ejemplo) se resalta para que el
+ * dueño del negocio lo vea antes de publicar la web.
  */
 export function LegalValue({ children }: { children: string }) {
-  if (!children.startsWith('[')) return <>{children}</>
+  if (!isPlaceholderValue(children)) return <>{children}</>
   return <mark className="rounded-md bg-yellow px-1.5 py-0.5 font-bold text-ink print:bg-transparent print:underline">{children}</mark>
 }
 
@@ -33,7 +33,16 @@ export function OwnerFacts() {
     { label: 'Domicilio', value: <LegalValue>{business.registeredAddress}</LegalValue> },
   ]
   if (business.registry) rows.push({ label: 'Registro', value: <LegalValue>{business.registry}</LegalValue> })
-  if (contact.email) rows.push({ label: 'Email', value: <a href={`mailto:${contact.email}`} className="font-bold text-violet-deep underline">{contact.email}</a> })
+  if (contact.email) {
+    rows.push({
+      label: 'Email',
+      value: isPlaceholderValue(contact.email) ? (
+        <LegalValue>{contact.email}</LegalValue>
+      ) : (
+        <a href={`mailto:${contact.email}`} className="font-bold text-violet-deep underline">{contact.email}</a>
+      ),
+    })
+  }
   if (contact.phone) rows.push({ label: 'Teléfono', value: contact.phone })
   rows.push({ label: 'Sitio web', value: site.url.replace(/^https?:\/\//, '') })
   return <LegalFacts rows={rows} />

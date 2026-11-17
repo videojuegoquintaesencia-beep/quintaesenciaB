@@ -36,7 +36,7 @@ export default function ErrorPage({ error, retry }: { error: Error & { digest?: 
               </Link>
             </div>
             <p className="mt-8">
-              <Link href="/contacto" className="inline-flex min-h-8 items-center gap-2 font-bold text-violet-deep underline underline-offset-4">
+              <Link href="/contacto" className="inline-flex min-h-8 items-center gap-2 font-bold text-violet-deep underline underline-offset-4 pointer-coarse:min-h-11">
                 <Mail aria-hidden="true" size={18} />
                 Contactar con nosotros
               </Link>

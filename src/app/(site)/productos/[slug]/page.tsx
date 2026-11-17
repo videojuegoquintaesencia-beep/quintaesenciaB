@@ -20,6 +20,7 @@ import { productFaqs } from '@/components/catalog/product-faqs'
 import { JsonLd } from '@/components/site/JsonLd'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { formatEUR } from '@/lib/format'
+import { OG_SIZE, productImagePath } from '@/lib/og-meta'
 
 type Params = { params: Promise<{ slug: string }> }
 
@@ -27,10 +28,13 @@ export function generateStaticParams() {
   return PRODUCTS.map((p) => ({ slug: p.slug }))
 }
 
+// Los productos son un catálogo cerrado: cualquier otro slug responde 404 con la página de error de toda la web.
+export const dynamicParams = false
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params
   const product = getProductBySlug(slug)
-  if (!product) return { title: 'Producto no encontrado', robots: { index: false } }
+  if (!product) return { title: 'Página no encontrada', robots: { index: false } }
   const title = `${seoTitle(product)} con impresión DTF`
   const description = truncate(`Desde ${formatEUR(fromPriceCents(product))} (IVA incluido). ${product.description}`, 158)
   const path = `/productos/${product.slug}`
@@ -38,7 +42,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { title, description, url: path, type: 'website', locale: 'es_ES', siteName: site.name },
+    openGraph: {
+      title,
+      description,
+      url: path,
+      type: 'website',
+      locale: 'es_ES',
+      siteName: site.name,
+      images: [{ url: productImagePath(product.slug), ...OG_SIZE, alt: `${seoTitle(product)}: ${product.tagline}` }],
+    },
+    twitter: { card: 'summary_large_image', images: [productImagePath(product.slug)] },
   }
 }
 
@@ -89,8 +102,16 @@ export default async function ProductPage({ params }: Params) {
             <ColorPicker />
 
             <p className="text-ink-soft">
-              <strong className="text-ink">{isSingleSize(product) ? 'Talla:' : 'Tallas:'}</strong>{' '}
-              {isSingleSize(product) ? 'única' : product.sizes.map((s) => s.label).join(' · ')}
+              {product.singleSizeInfo ? (
+                <>
+                  <strong className="text-ink">{product.singleSizeInfo.label}:</strong> {product.singleSizeInfo.value}
+                </>
+              ) : (
+                <>
+                  <strong className="text-ink">{isSingleSize(product) ? 'Talla:' : 'Tallas:'}</strong>{' '}
+                  {isSingleSize(product) ? 'única' : product.sizes.map((s) => s.label).join(' · ')}
+                </>
+              )}
             </p>
 
             <div>
@@ -180,18 +201,27 @@ export default async function ProductPage({ params }: Params) {
           '@type': 'Product',
           name: title,
           description: product.description,
+          image: [`${site.url}${productImagePath(product.slug)}`],
           sku: product.id,
           category: CATEGORY_LABELS[product.category],
           url,
           brand: { '@type': 'Brand', name: site.name },
+          // El precio real depende del diseño (zonas, tamaño del estampado, color y unidades): se publica como "desde".
           offers: {
-            '@type': 'Offer',
+            '@type': 'AggregateOffer',
             url,
             priceCurrency: site.currency,
-            price: (fromCents / 100).toFixed(2),
+            lowPrice: (fromCents / 100).toFixed(2),
+            offerCount: product.colors.length,
             availability: 'https://schema.org/InStock',
             itemCondition: 'https://schema.org/NewCondition',
             seller: { '@type': 'Organization', name: site.name },
+            // Productos personalizados: sin desistimiento (art. 103.c TRLGDCU); la garantía legal no es una política de devolución.
+            hasMerchantReturnPolicy: {
+              '@type': 'MerchantReturnPolicy',
+              applicableCountry: site.country,
+              returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+            },
           },
         }}
       />

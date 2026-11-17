@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { CartLine } from '@/lib/cart-store'
 import { isPostalCodeDeliverable, isValidSpanishPostalCode, normalizePostalCode } from '@/lib/pricing'
-import { addressSchema, customerSchema, fieldErrors } from '@/lib/validators'
+import { COMPANY_REQUIRED_MESSAGE, TAX_ID_REQUIRED_MESSAGE, addressSchema, customerSchema, fieldErrors } from '@/lib/validators'
 
 export interface FormValues {
   name: string
@@ -50,7 +50,7 @@ export type FormErrors = Record<string, string>
 
 export const CONSENT_ERRORS = {
   terms: 'Debes aceptar las condiciones de venta para continuar.',
-  privacy: 'Debes aceptar la política de privacidad para continuar.',
+  privacy: 'Debes confirmar que has leído la política de privacidad.',
   noWithdrawal: 'Necesitamos que confirmes que lo has entendido.',
   artworkRights: 'Necesitamos que confirmes que tienes derecho a usar tus diseños.',
 } as const
@@ -89,6 +89,11 @@ function validateRaw(v: FormValues): FormErrors {
 
   const customer = customerSchema.safeParse(contactOf(v))
   if (!customer.success) Object.assign(errors, fieldErrors(customer.error))
+  // Comprar como empresa implica dar los datos de la factura (el servidor exige que vayan juntos).
+  if (v.isCompany) {
+    if (!v.company.trim()) errors.company = COMPANY_REQUIRED_MESSAGE
+    if (!v.taxId.trim()) errors.taxId = TAX_ID_REQUIRED_MESSAGE
+  }
 
   const address = addressSchema.safeParse(addressOf(v))
   if (!address.success) {

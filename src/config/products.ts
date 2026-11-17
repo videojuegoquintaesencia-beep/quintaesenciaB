@@ -76,8 +76,10 @@ export interface Product {
   views: ProductView[]
   /** Precio del estampado por zona, según la superficie realmente usada (caja envolvente de las capas). */
   printTiers: Record<string, PrintTier[]>
-  /** Máximo de unidades por línea de pedido (por encima conviene presupuesto). */
+  /** Máximo de unidades por línea de pedido, es decir, por diseño (por encima conviene presupuesto). */
   maxQtyPerLine: number
+  /** Productos de talla única: dato que se muestra en la ficha en lugar de la talla (p. ej. la capacidad de una taza). */
+  singleSizeInfo?: { label: string; value: string }
 }
 
 /* ───────────────────────── Paletas ───────────────────────── */
@@ -200,7 +202,7 @@ export const PRODUCTS: Product[] = [
     name: 'Sudadera con capucha',
     namePlural: 'Sudaderas con capucha',
     category: 'ropa',
-    tagline: 'El hoodie que nadie más tendrá',
+    tagline: 'La sudadera que nadie más tendrá',
     description:
       'Sudadera con capucha unisex, interior suave y bolsillo canguro. Estampamos tu diseño en DTF con colores intensos que aguantan el uso diario.',
     highlights: [
@@ -325,7 +327,7 @@ export const PRODUCTS: Product[] = [
     category: 'hogar',
     tagline: 'El desayuno con tu sello',
     description:
-      'Taza de cerámica de 330 ml con tu diseño en toda la superficie. Un regalo que se usa cada día, para ti, tu equipo o tu negocio.',
+      'Taza de cerámica de 330 ml con tu diseño alrededor de la taza. Un regalo que se usa cada día, para ti, tu equipo o tu negocio.',
     highlights: [
       'Estampado envolvente de 20 × 8,5 cm',
       'Opciones con interior y asa de color',
@@ -338,11 +340,13 @@ export const PRODUCTS: Product[] = [
     ],
     care: [
       'Recomendamos lavar a mano con esponja suave para que el estampado dure más.',
+      'No la metas en el lavavajillas ni en el microondas.',
       'Evitar estropajos abrasivos y golpes.',
     ],
     basePriceCents: 490,
     colors: mugColors,
     sizes: oneSize,
+    singleSizeInfo: { label: 'Capacidad', value: '330 ml' },
     views: [
       {
         id: 'wrap',

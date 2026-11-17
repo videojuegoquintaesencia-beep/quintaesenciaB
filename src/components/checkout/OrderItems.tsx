@@ -33,7 +33,7 @@ export function OrderItems({ order }: { order: Order }) {
               <p className="mt-1 text-sm">{sizesLabel(it)}</p>
               {it.discountCents > 0 && (
                 <p className="text-sm text-ink-soft">
-                  Descuento por cantidad ({it.discountPct} %): −{formatEUR(it.discountCents)}
+                  Descuento por cantidad ({it.discountPct}&nbsp;%): −{formatEUR(it.discountCents)}
                 </p>
               )}
               {it.note && <p className="text-sm text-ink-soft">Tu nota: {it.note}</p>}
@@ -56,7 +56,7 @@ export function OrderItems({ order }: { order: Order }) {
           <dd className="font-display font-semibold">{formatEUR(order.totalCents)}</dd>
         </div>
         <div className="flex justify-between gap-3 text-sm text-ink-soft">
-          <dt>IVA incluido ({Math.round(site.vatRate * 100)} %)</dt>
+          <dt>IVA incluido ({Math.round(site.vatRate * 100)}&nbsp;%)</dt>
           <dd>{formatEUR(order.vatCents)}</dd>
         </div>
       </dl>

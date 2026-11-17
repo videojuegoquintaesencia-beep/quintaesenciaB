@@ -32,7 +32,17 @@ export interface Quote {
   updatedAt: string
 }
 
-const formatQuoteNumber = (kind: QuoteKind, seq: number) => `${kind === 'quote' ? 'PR' : 'MS'}-${1000 + seq}`
+const QUOTE_NUMBER_OFFSET = 1000
+const formatQuoteNumber = (kind: QuoteKind, seq: number) => `${kind === 'quote' ? 'PR' : 'MS'}-${QUOTE_NUMBER_OFFSET + seq}`
+
+/** "PR-1004", "ms1004" o solo "1004" → seq 4 (y el tipo, si lleva prefijo). Null si no tiene el formato esperado. */
+export function parseQuoteNumber(value: string): { seq: number; kind: QuoteKind | null } | null {
+  const m = /^\s*(pr|ms)?[-\s]?(\d{4,9})\s*$/i.exec(value)
+  if (!m) return null
+  const seq = Number(m[2]) - QUOTE_NUMBER_OFFSET
+  if (!Number.isInteger(seq) || seq <= 0) return null
+  return { seq, kind: m[1] ? (m[1].toLowerCase() === 'pr' ? 'quote' : 'contact') : null }
+}
 
 type Row = Record<string, unknown>
 
@@ -153,8 +163,21 @@ export async function listQuotes(opts: {
   const q = opts.q?.trim()
   if (q) {
     const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`
-    where.push(`(name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR COALESCE(company,'') LIKE ? ESCAPE '\\')`)
-    args.push(like, like, like)
+    const parts = [
+      `name LIKE ? ESCAPE '\\'`,
+      `email LIKE ? ESCAPE '\\'`,
+      `COALESCE(company,'') LIKE ? ESCAPE '\\'`,
+      `message LIKE ? ESCAPE '\\'`,
+    ]
+    args.push(like, like, like, like)
+    const number = parseQuoteNumber(q)
+    if (number) {
+      // La referencia (PR-1004 / MS-1004) lleva el prefijo del tipo; sin prefijo vale para el tipo que se esté viendo.
+      parts.push(number.kind ? `(kind = ? AND seq = ?)` : `seq = ?`)
+      if (number.kind) args.push(number.kind)
+      args.push(number.seq)
+    }
+    where.push(`(${parts.join(' OR ')})`)
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
   const limit = Math.min(Math.max(opts.limit ?? 25, 1), 200)

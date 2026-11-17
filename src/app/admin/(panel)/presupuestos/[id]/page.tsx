@@ -94,7 +94,7 @@ export default async function QuoteDetailPage({ params }: Props) {
           {files.length > 0 && (
             <Panel title="Archivos adjuntos" id="adjuntos" icon={<Paperclip size={20} />}>
               <ul className="grid gap-3 sm:grid-cols-2">
-                {files.map((f) => (
+                {files.map((f, i) => (
                   <li key={f.id} className="overflow-hidden rounded-xl border-2 border-ink bg-white">
                     <a href={`/api/files/${f.id}`} target="_blank" rel="noopener" className="block h-40 bg-cream/60 p-2">
                       <FileImage
@@ -104,6 +104,7 @@ export default async function QuoteDetailPage({ params }: Props) {
                         height={160}
                         fit="box"
                         checker
+                        eager={i === 0}
                       />
                       <span className="sr-only">Abrir a tamaño completo (pestaña nueva)</span>
                     </a>
@@ -163,7 +164,7 @@ export default async function QuoteDetailPage({ params }: Props) {
               )}
             </ul>
           </Panel>
-          <QuoteForm quoteId={quote.id} status={quote.status} adminNote={quote.adminNote} />
+          <QuoteForm quoteId={quote.id} kind={quote.kind} status={quote.status} adminNote={quote.adminNote} />
         </div>
       </div>
     </>

@@ -38,7 +38,7 @@ const cartLineSchema = z.object({
 
 const consentsSchema = z.object({
   terms: z.literal(true, { error: 'Debes aceptar las condiciones de venta' }),
-  privacy: z.literal(true, { error: 'Debes aceptar la política de privacidad' }),
+  privacy: z.literal(true, { error: 'Debes confirmar que has leído la política de privacidad' }),
   noWithdrawal: z.literal(true, { error: 'Debes confirmar que has leído la información sobre el desistimiento' }),
   artworkRights: z.literal(true, { error: 'Debes confirmar que tienes derecho a usar los diseños' }),
 })
@@ -72,7 +72,7 @@ const fail = (
 ): PrepareResult => ({ ok: false, status, code, error, ...extra })
 
 const EVIDENCE_NOTE =
-  'El cliente aceptó las condiciones de venta, la política de privacidad, la ausencia de desistimiento en productos personalizados (salvo defecto) y que tiene derecho a usar los diseños subidos.'
+  'El cliente aceptó las condiciones de venta, confirmó que ha leído la política de privacidad, entendió que los productos personalizados no tienen derecho de desistimiento (art. 103.c TRLGDCU; conserva la garantía por defectos) y declaró tener derecho a usar los diseños subidos, que no incumplen los contenidos que no se imprimen.'
 
 function lineLabel(productName: string, colorName: string) {
   return `${productName} · ${colorName}`

@@ -10,6 +10,8 @@ export const runtime = 'nodejs'
 
 /** Tope del cuerpo (20 líneas con diseños de hasta 80 capas caben de sobra). */
 const MAX_BODY_BYTES = 512 * 1024
+/** Pedidos creados cada 10 minutos entre todas las IP juntas (muy por encima de cualquier pico real de la tienda). */
+const MAX_ORDERS_PER_WINDOW_ALL_IPS = 300
 
 const tooMany = (retryAfterSec: number) =>
   Response.json(
@@ -45,6 +47,10 @@ export async function POST(req: Request) {
 
   const create = rateLimit(`checkout-create:${ip}`, 20, 10 * 60_000)
   if (!create.ok) return tooMany(create.retryAfterSec)
+  // Tope global (todas las IP) de pedidos creados: red de seguridad por si TRUSTED_PROXY_HOPS estuviera mal definido
+  // y alguien rotase de "IP" para llenar la base de datos de pedidos sin pagar.
+  const createAll = rateLimit('checkout-create:all', MAX_ORDERS_PER_WINDOW_ALL_IPS, 10 * 60_000)
+  if (!createAll.ok) return tooMany(createAll.retryAfterSec)
 
   const order = await createOrder(prepared.input)
   await recordConsents(order.id)

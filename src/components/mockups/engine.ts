@@ -30,7 +30,7 @@ export function buildMockup(opts: MockupOptions): Built | null {
   const draw = opts.icon && opts.productId === 'taza' ? mugIcon : DRAWERS[`${opts.productId}/${opts.viewId}`]
   if (!draw) return null
   const hex = normalizeHex(opts.colorHex)
-  const uid = `mk-${slug(opts.productId)}-${slug(opts.viewId)}-${hex.slice(1)}${opts.art === undefined ? '' : `-a${opts.art}`}${opts.icon ? '-i' : ''}`
+  const uid = `mk-${slug(opts.productId)}-${slug(opts.viewId)}-${hex.slice(1)}${opts.art === undefined ? '' : `-a${opts.art}`}${opts.icon ? '-i' : ''}${opts.idSuffix ? `-${slug(opts.idSuffix)}` : ''}`
   const main = view.areas.length ? mainArea(view) : undefined
   const artIn: Ctx['artIn'] = (box, id) => (opts.art === undefined ? '' : artInBox(opts.art, uid, box, id))
   const art = (areaId: string) =>

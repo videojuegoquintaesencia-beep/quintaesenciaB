@@ -7,21 +7,30 @@ import Konva from 'konva'
 import { mockupDataUrl } from '@/components/mockups'
 import { getArea, getColor, getProduct, getView, type PrintArea, type Product, type ProductView } from '@/config/products'
 import { areaUsage, designArtworkFileIds, type Design } from '@/lib/design'
-import { PREVIEW_WIDTH_PX } from './constants'
+import { site } from '@/config/site'
+import { MIN_PRINT_DPI, PREVIEW_WIDTH_PX } from './constants'
 import { CM_PER_INCH, round1 } from './geometry'
 import { loadFileImage, type LoadedImage } from './images'
 import { ensureFont } from './fonts'
 import { buildLayerNode } from './nodes'
-import { printRenderSize } from '@/lib/print-file'
+import { blobWithPngDpi } from './png-meta'
+import { printRenderSize, printRenderSizeAt } from '@/lib/print-file'
 import { uploadFile } from './upload'
 
 type ImageMap = Map<string, LoadedImage>
 
-function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+function canvasToBlob(canvas: HTMLCanvasElement, type: 'image/png' | 'image/webp' = 'image/png', quality?: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('El navegador no pudo generar la imagen.'))), 'image/png')
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('El navegador no pudo generar la imagen.'))), type, quality)
   })
 }
+
+/**
+ * Calidad WebP de las vistas previas (solo se ven en pantalla: carrito, pedido y panel). En WebP pesan ~4 veces
+ * menos que en PNG, que importa porque cada miniatura descarga el archivo entero. Si el navegador no sabe
+ * codificar WebP (Safari), `toBlob` devuelve un PNG y todo sigue igual.
+ */
+const PREVIEW_WEBP_QUALITY = 0.9
 
 function rasterize(root: Konva.Group, width: number, height: number): HTMLCanvasElement {
   const canvas = root.toCanvas({ x: 0, y: 0, width, height, pixelRatio: 1 }) as HTMLCanvasElement
@@ -67,8 +76,11 @@ export async function renderPreview(design: Design, product: Product, view: Prod
     }
     root.add(holder)
   }
-  return canvasToBlob(rasterize(root, width, height))
+  return canvasToBlob(rasterize(root, width, height), 'image/webp', PREVIEW_WEBP_QUALITY)
 }
+
+/** Fracción del límite de subida a la que apunta el editor al bajar los ppp (el peso exacto del PNG no se conoce de antemano). */
+const PRINT_BYTES_TARGET = 0.8
 
 export interface PrintRender {
   blob: Blob
@@ -91,18 +103,38 @@ export async function renderPrintFile(
   const wCm = bbox.x1 - bbox.x0
   const hCm = bbox.y1 - bbox.y0
 
-  // El servidor comprueba con la misma función que el PNG subido coincide con la superficie cobrada.
-  const { dpi, widthPx, heightPx } = printRenderSize(wCm, hCm)
-  const ppc = dpi / CM_PER_INCH
-
-  const root = new Konva.Group()
-  const holder = new Konva.Group({ x: -bbox.x0 * ppc, y: -bbox.y0 * ppc })
-  for (const layer of layers) {
-    holder.add(buildLayerNode(layer, ppc, layer.type === 'image' ? images.get(layer.fileId) : null))
+  const render = async (dpi: number) => {
+    const { widthPx, heightPx } = printRenderSizeAt(wCm, hCm, dpi)
+    const ppc = dpi / CM_PER_INCH
+    const root = new Konva.Group()
+    const holder = new Konva.Group({ x: -bbox.x0 * ppc, y: -bbox.y0 * ppc })
+    for (const layer of layers) {
+      holder.add(buildLayerNode(layer, ppc, layer.type === 'image' ? images.get(layer.fileId) : null))
+    }
+    root.add(holder)
+    // El PNG del canvas no trae resolución: se anota (chunk pHYs) para que el RIP o Photoshop lo abran a su tamaño real.
+    const blob = await blobWithPngDpi(await canvasToBlob(rasterize(root, widthPx, heightPx)), dpi)
+    return { blob, widthPx, heightPx, dpi }
   }
-  root.add(holder)
-  const blob = await canvasToBlob(rasterize(root, widthPx, heightPx))
-  return { blob, name: `${product.id}-${area.id}-${round1(wCm)}x${round1(hCm)}cm.png`, widthPx, heightPx, dpi }
+
+  // Resolución de partida (300 ppp, o menos en zonas enormes). El servidor comprueba con la misma función
+  // (lib/print-file) que el PNG subido corresponde a la superficie cobrada, y admite cualquier ppp entre
+  // MIN_PRINT_DPI y ese máximo.
+  let result = await render(printRenderSize(wCm, hCm).dpi)
+
+  // Una foto a 300 ppp puede pesar decenas de MB (PNG con transparencia). Si no cabe en el límite de subida,
+  // se vuelve a dibujar a menos ppp; el peso de un PNG crece más o menos con el número de píxeles (∝ ppp²).
+  const maxBytes = Math.floor(site.uploads.maxPrintBytes * PRINT_BYTES_TARGET)
+  for (let attempt = 0; attempt < 4 && result.blob.size > maxBytes && result.dpi > MIN_PRINT_DPI; attempt++) {
+    const estimate = Math.floor(result.dpi * Math.sqrt(maxBytes / result.blob.size) * 0.95)
+    result = await render(Math.max(MIN_PRINT_DPI, Math.min(estimate, result.dpi - 10)))
+  }
+  if (result.blob.size > site.uploads.maxPrintBytes) {
+    throw new Error(
+      'Tu diseño tiene demasiado detalle para prepararlo como archivo de impresión. Reduce el tamaño de la foto en el lienzo o usa una imagen más sencilla.',
+    )
+  }
+  return { ...result, name: `${product.id}-${area.id}-${round1(wCm)}x${round1(hCm)}cm.png` }
 }
 
 /* ───────────── Flujo completo: render + subida ───────────── */
@@ -171,7 +203,9 @@ export async function exportDesignFiles(
       previews[viewId] = hit.fileId
     } else {
       const blob = await renderPreview(design, product, view, images)
-      const uploaded = await uploadFile(blob, 'preview', { name: `${product.id}-${viewId}-vista.png` })
+      const uploaded = await uploadFile(blob, 'preview', {
+        name: `${product.id}-${viewId}-vista.${blob.type === 'image/webp' ? 'webp' : 'png'}`,
+      })
       cache.set(`preview:${viewId}`, { sig, fileId: uploaded.id })
       previews[viewId] = uploaded.id
     }

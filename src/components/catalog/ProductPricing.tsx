@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { QUANTITY_DISCOUNTS, getArea, type PrintArea, type PrintTier, type Product } from '@/config/products'
+import { QUANTITY_DISCOUNTS, getArea, isSingleSize, type PrintArea, type PrintTier, type Product } from '@/config/products'
 import { site } from '@/config/site'
 import { formatEUR, formatNumber, unidades } from '@/lib/format'
 import { quantityDiscountPct } from '@/lib/pricing'
@@ -65,7 +65,7 @@ export function ProductPricing({ product }: { product: Product }) {
         </li>
         <li className="card-flat bg-teal-soft p-5">
           <p className="font-display text-sm font-semibold uppercase tracking-wide">− El descuento</p>
-          <p className="mt-2 font-display text-3xl font-bold">hasta {maxDiscount} %</p>
+          <p className="mt-2 font-display text-3xl font-bold">hasta {maxDiscount}&nbsp;%</p>
           <p className="mt-1 text-ink-soft">si pides varias unidades iguales.</p>
         </li>
       </ol>
@@ -107,8 +107,7 @@ export function ProductPricing({ product }: { product: Product }) {
 
       <h3 className="mt-10 text-2xl">Descuento por volumen</h3>
       <p className="mt-2 max-w-3xl text-ink-soft">
-        Se aplica al importe de cada línea de tu pedido (mismo producto, color y diseño) según las unidades que sumes entre todas las
-        tallas. Desde {site.b2b.quoteFromUnits} unidades te recomendamos{' '}
+        Se aplica al importe de cada línea de tu pedido (mismo producto, color y diseño) según las unidades que sumes{isSingleSize(product) ? '' : ' entre todas las tallas'}. Desde {site.b2b.quoteFromUnits} unidades te recomendamos{' '}
         <Link href="/empresas" className="font-bold text-violet-deep underline underline-offset-4">
           pedir un presupuesto
         </Link>
@@ -127,7 +126,7 @@ export function ProductPricing({ product }: { product: Product }) {
             {QUANTITY_DISCOUNTS.map((d, i) => (
               <tr key={d.minQty} className="border-b border-ink/15 last:border-0">
                 <th scope="row" className="px-4 py-2.5 font-bold">{unitsRange(i)}</th>
-                <td className="px-4 py-2.5 text-right font-display text-lg font-semibold">{d.pct === 0 ? 'Sin descuento' : `${d.pct} %`}</td>
+                <td className="px-4 py-2.5 text-right font-display text-lg font-semibold">{d.pct === 0 ? 'Sin descuento' : `${d.pct}\u00a0%`}</td>
               </tr>
             ))}
           </tbody>
@@ -158,7 +157,7 @@ export function ProductPricing({ product }: { product: Product }) {
             {example.qty} × {formatEUR(example.unitCents)} = {formatEUR(example.grossCents)}
             {example.pct > 0 && (
               <>
-                , menos un {example.pct} % = <strong className="text-ink">{formatEUR(example.totalCents)}</strong>
+                , menos un {example.pct}&nbsp;% = <strong className="text-ink">{formatEUR(example.totalCents)}</strong>
               </>
             )}
             .
@@ -166,7 +165,7 @@ export function ProductPricing({ product }: { product: Product }) {
         </div>
       )}
       <p className="mt-5 text-sm text-ink-soft">
-        Todos los precios incluyen el {Math.round(site.vatRate * 100)} % de IVA. El envío se calcula aparte en el carrito.
+        Todos los precios incluyen el {Math.round(site.vatRate * 100)}&nbsp;% de IVA. El envío se calcula aparte en el carrito.
       </p>
     </div>
   )

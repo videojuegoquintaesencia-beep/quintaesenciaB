@@ -12,6 +12,8 @@ export interface MockupOptions {
   art?: number
   /** Ilustración de catálogo en lugar de la vista técnica (solo cambia las tazas). */
   icon?: boolean
+  /** Sufijo para los ids internos cuando el mismo mockup se pinta varias veces en la página (ids únicos en el HTML). */
+  idSuffix?: string
 }
 
 /** Resultado de dibujar un mockup: el contenido interior del <svg> y su tamaño. */

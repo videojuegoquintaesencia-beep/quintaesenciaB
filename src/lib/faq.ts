@@ -54,7 +54,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
         answer: [
           'No. Puedes pedir una sola unidad, con tu diseño y tu talla.',
           firstDiscount
-            ? `Si pides más, aplicamos un descuento automático por volumen a cada línea del pedido: desde ${firstDiscount.minQty} unidades hasta un ${topDiscount.pct} % a partir de ${topDiscount.minQty}. Lo ves reflejado en el precio mientras diseñas.`
+            ? `Si pides más, aplicamos un descuento automático por volumen a cada línea del pedido: desde ${firstDiscount.minQty} unidades hasta un ${topDiscount.pct}\u00a0% a partir de ${topDiscount.minQty}. Lo ves reflejado en el precio mientras diseñas.`
             : '',
         ].filter(Boolean),
       },
@@ -238,13 +238,14 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'iva',
         question: '¿Los precios llevan IVA?',
-        answer: [`Sí. Todos los importes que ves, productos y envío, llevan el ${vatPct} % de IVA incluido.`],
+        answer: [`Sí. Todos los importes que ves, productos y envío, llevan el ${vatPct}\u00a0% de IVA incluido.`],
       },
       {
         id: 'factura',
         question: '¿Puedo pedir factura?',
         answer: [
-          'Sí. Si compras como empresa o autónomo, indica el nombre de la empresa y el NIF/CIF al hacer el pedido. Si no lo hiciste, escríbenos con tu número de pedido y te preparamos la factura.',
+          'Sí. Si compras como empresa o autónomo, marca «Compro como empresa o autónomo» al hacer el pedido e indica el nombre de la empresa y el NIF/CIF: te enviamos la factura por email con esos datos.',
+          'Si necesitas factura completa y no lo hiciste, o compras como particular, escríbenos con tu número de pedido y tus datos fiscales y te la preparamos.',
         ],
       },
       {
@@ -264,14 +265,14 @@ export const FAQ_GROUPS: FaqGroup[] = [
         id: 'precios-empresas',
         question: '¿Hacéis precios especiales para empresas, equipos o eventos?',
         answer: [
-          `Aplicamos descuentos por volumen automáticos, de ${firstDiscount?.pct ?? 0} % a ${topDiscount.pct} % según las unidades de cada línea del pedido. Los tienes en la tabla de [empresas](/empresas#precios-por-volumen).`,
+          `Aplicamos descuentos por volumen automáticos, de ${firstDiscount?.pct ?? 0}\u00a0% a ${topDiscount.pct}\u00a0% según las unidades de cada línea del pedido. Los tienes en la tabla de [empresas](/empresas#precios-por-volumen).`,
         ],
       },
       {
         id: 'presupuesto',
         question: '¿Cuándo conviene pedir presupuesto?',
         answer: [
-          `Si necesitas más de ${b2b.quoteFromUnits} unidades, varios diseños o productos a la vez, una fecha de entrega concreta o ayuda con el diseño. Con menos unidades puedes pedir directamente en la web.`,
+          `Si necesitas ${b2b.quoteFromUnits} unidades o más, varios diseños o productos a la vez, una fecha de entrega concreta o ayuda con el diseño. Con menos unidades puedes pedir directamente en la web.`,
           'Rellena el [formulario de presupuesto](/empresas#presupuesto) y te respondemos en 1-2 días laborables.',
         ],
       },
@@ -292,7 +293,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'factura-empresas',
         question: '¿Emitís factura con IVA?',
-        answer: [`Sí. Los precios de la web incluyen el ${vatPct} % de IVA y te enviamos factura con tus datos fiscales.`],
+        answer: [`Sí. Los precios de la web incluyen el ${vatPct}\u00a0% de IVA y te enviamos factura con tus datos fiscales.`],
       },
     ],
   },

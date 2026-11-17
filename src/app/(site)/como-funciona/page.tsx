@@ -148,7 +148,7 @@ export default function ComoFuncionaPage() {
         <SectionHeading id="prepara-titulo" eyebrow="Guía rápida" title="Prepara tu diseño">
           Con estos cuatro detalles tu estampado saldrá como esperas.
         </SectionHeading>
-        <div className="grid items-start gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {DO_LIST.map((item) => (
               <li key={item.title} className="card flex gap-3 p-5">

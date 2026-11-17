@@ -94,7 +94,7 @@ export function ProductGallery() {
             ))}
           </ul>
         ) : (
-          <p>Diseño de ejemplo: el tuyo puede ser lo que quieras.</p>
+          <p>Diseño de ejemplo: el tuyo lo creas tú.</p>
         )}
       </div>
     </div>

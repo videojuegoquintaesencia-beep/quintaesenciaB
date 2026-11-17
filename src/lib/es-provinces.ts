@@ -133,8 +133,9 @@ export interface AddressZoneIssue {
 
 /**
  * El servidor solo valida el código postal para decidir el envío; sin este cruce se podía poner un CP peninsular
- * con provincia o localidad de Canarias/Ceuta/Melilla (zonas sin envío) o de otra provincia. Devuelve el problema
- * encontrado o null si todo cuadra (o si el texto de la provincia no se reconoce: en ese caso manda el CP).
+ * con provincia o localidad de Canarias/Ceuta/Melilla (zonas sin envío), de otra provincia o inventada. La provincia
+ * debe ser una provincia real (en castellano, cooficial o alias habitual) y corresponder al código postal.
+ * Devuelve el primer problema encontrado o null si todo cuadra.
  */
 export function addressZoneIssue(address: { postalCode: string; province: string; city: string }): AddressZoneIssue | null {
   const prefix = normalizePostalCode(address.postalCode).slice(0, 2)
@@ -144,6 +145,7 @@ export function addressZoneIssue(address: { postalCode: string; province: string
   if (EXCLUDED_IN_PROVINCE.some((p) => containsPhrase(province, p))) return { field: 'province', message: excluded }
   if (EXCLUDED_IN_CITY.some((p) => containsPhrase(city, p))) return { field: 'city', message: excluded }
   const known = PREFIXES_BY_NAME.get(province)
-  if (known && !known.includes(prefix)) return { field: 'province', message: 'La provincia no coincide con el código postal.' }
+  if (!known) return { field: 'province', message: 'Elige una provincia de la lista.' }
+  if (!known.includes(prefix)) return { field: 'province', message: 'La provincia no coincide con el código postal.' }
   return null
 }

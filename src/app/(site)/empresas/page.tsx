@@ -28,9 +28,9 @@ import { telHref, whatsappHref } from '@/components/content/contact-info'
 import { site } from '@/config/site'
 
 export const metadata: Metadata = pageMetadata({
-  title: 'Camisetas, gorras y tazas personalizadas para empresas y equipos',
+  title: 'Ropa, gorras y tazas personalizadas para empresas',
   description:
-    'Merchandising, equipaciones y regalos de empresa con impresión DTF. Descuentos por volumen, varias referencias en un pedido, atención personal y factura con IVA. Pide presupuesto.',
+    'Merchandising, equipaciones y regalos de empresa con impresión DTF. Descuentos por volumen, atención personal y factura con IVA. Pide presupuesto.',
   path: '/empresas',
 })
 
@@ -57,7 +57,7 @@ const STEPS: Step[] = [
   { title: 'Nos cuentas', text: 'Productos, unidades aproximadas, fecha y, si lo tienes, tu logo. Con el formulario de abajo es cuestión de minutos.' },
   { title: 'Te respondemos', text: 'En 1-2 días laborables te escribimos con una propuesta o con las dudas que necesitemos resolver.' },
   { title: 'Afinamos el diseño', text: 'Revisamos tus archivos, ajustamos tamaños y colocación y cerramos los detalles contigo.' },
-  { title: 'Producimos y entregamos', text: `Imprimimos y enviamos tu pedido. En el presupuesto te damos un plazo concreto: los ${production.leadDaysMin}-${production.leadDaysMax} días laborables son para pedidos habituales.` },
+  { title: 'Producimos y entregamos', text: `Imprimimos y enviamos tu pedido. En el presupuesto te damos un plazo concreto: los ${production.leadDaysMin} a ${production.leadDaysMax} días laborables son para pedidos habituales.` },
 ]
 
 export default function EmpresasPage() {
@@ -110,7 +110,7 @@ export default function EmpresasPage() {
                 .
               </li>
               <li>A partir de {b2b.quoteFromUnits} unidades, o con varios diseños, te recomendamos pedir presupuesto: así lo afinamos contigo.</li>
-              <li>Todos los precios incluyen el {Math.round(site.vatRate * 100)} % de IVA.</li>
+              <li>Todos los precios incluyen el {Math.round(site.vatRate * 100)}&nbsp;% de IVA.</li>
             </ul>
           </div>
           <DiscountTable />

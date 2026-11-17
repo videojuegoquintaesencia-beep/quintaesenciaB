@@ -85,12 +85,16 @@ Todas están documentadas en `.env.example`.
    `PAYPAL_WEBHOOK_ID` (en producción es obligatorio: sin él el webhook se rechaza). Haz un pedido de prueba en
    sandbox antes de pasar a `live`.
 4. **Email.** Rellena `SMTP_*`, `MAIL_FROM` (con un dominio verificado, SPF y DKIM) y `ADMIN_NOTIFY_EMAIL`.
-5. **Dominio.** Fija `NEXT_PUBLIC_SITE_URL` al dominio definitivo.
+5. **Dominio.** Fija `NEXT_PUBLIC_SITE_URL` al dominio definitivo (`https://…`) **antes de compilar**: es obligatorio. Sin él, los enlaces
+   de los emails (seguimiento del pedido), el sitemap y las URL canónicas saldrían con `http://localhost:3000`.
 6. **Proxy.** Ajusta `TRUSTED_PROXY_HOPS` al número de proxies que tienes delante. Si tu hosting o proxy permite
    limitar el tamaño de las peticiones (`client_max_body_size` en Nginx, límite de cuerpo en Vercel), fíjalo en
-   unos 15 MB: la app ya corta los cuerpos que se pasan de tamaño, pero un tope delante la protege mejor.
+   unos 25 MB (los PNG de impresión de fotos grandes pueden llegar a 20 MB): la app ya corta los cuerpos que se
+   pasan de tamaño, pero un tope delante la protege mejor. Si usas Vercel, comprueba que su límite de cuerpo
+   de las funciones permite subidas de ese tamaño y haz una prueba con una foto grande en tu entorno real.
 7. **Arranque.** Al arrancar en producción el servidor escribe en el registro los problemas de configuración que
-   detecta (contraseña o secreto débiles, `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin configurar…). Léelo.
+   detecta (contraseña o secreto débiles, `NEXT_PUBLIC_SITE_URL` sin definir, datos del titular de `src/config/site.ts` que
+   siguen siendo de ejemplo, `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin configurar…). Léelo.
 
 Los límites de peticiones de subidas, checkout y formularios viven en memoria de cada instancia; con varias
 instancias conviene sustituirlos por un almacén compartido (Redis/Upstash). El límite de intentos de acceso al panel
@@ -103,9 +107,14 @@ pedidos que nunca se pagaron, con sus datos y archivos (30 días); los plazos es
 ## Antes de publicar: lo que tienes que completar o decidir
 
 - [ ] **Datos de contacto** en `src/config/site.ts` (`contact`): email, teléfono, WhatsApp, redes, dirección y horario.
-      Ahora son valores de ejemplo (`hola@piezaunica.example`…).
+      El email es de ejemplo (`hola@piezaunica.example`, un dominio reservado que no recibe correo). El teléfono, el
+      WhatsApp (sin él no aparece el botón flotante) y la dirección están vacíos y, por tanto, ocultos en la web: rellénalos
+      si quieres mostrarlos.
 - [ ] **Datos del titular** (`business`): razón social o nombre y apellidos, NIF/CIF, domicilio fiscal y, si procede,
-      datos registrales. Aparecen resaltados en las páginas legales mientras sigan siendo `[COMPLETAR…]`.
+      datos registrales (obligatorios si el titular es una sociedad: p. ej. «Registro Mercantil de Madrid, Tomo X, Folio Y,
+      Hoja Z»), y los proveedores de alojamiento, base de datos y correo con el país donde almacenan los datos (`processors`,
+      para la política de privacidad). Aparecen resaltados en las páginas legales mientras sigan siendo `[COMPLETAR…]`, y
+      el arranque en producción lo registra como error.
 - [ ] **Textos legales**: están redactados como plantillas generales para una tienda española. Que los revise un
       profesional, junto con las promesas operativas que contienen (cancelación antes de producción, reimpresión o
       reembolso en caso de defecto, hojas de reclamaciones, plazos de conservación de datos).
@@ -116,7 +125,14 @@ pedidos que nunca se pagaron, con sus datos y archivos (30 días); los plazos es
 - [ ] **Nombre y dominio**: comprueba la disponibilidad de "Pieza Única" como marca (OEPM) y como dominio, o cámbialo
       en `src/config/site.ts` y en el componente `Logo`.
 - [ ] **PayPal y SMTP** reales, y una prueba completa en sandbox.
-- [ ] **Facturas**: el checkout recoge NIF/CIF y razón social si el cliente los indica. Decide cómo emites las facturas.
+- [ ] **Facturas**: el checkout exige empresa y NIF/CIF a quien marca «Compro como empresa o autónomo», y los emails y las
+      condiciones dicen que se envía la factura por email. Decide cómo y cuándo las emites (y si necesitas pedir un domicilio
+      fiscal distinto del de envío: ahora se indica en la nota del pedido).
+- [ ] **Información al cliente que solo tú puedes confirmar**: cómo se estampan las tazas (la web explica el DTF sobre prenda) y
+      si son aptas para lavavajillas y microondas (ahora dice que no), el plazo de entrega a Baleares (la web dice «mensajería
+      24-48 h» para todos los envíos), si estás adherida a algún sistema de arbitraje de consumo (ahora dice que no), el formato
+      de hojas de reclamaciones obligatorio en tu comunidad autónoma, el plazo máximo de reembolso (14 días naturales) y la URL
+      vigente de la política de cookies de PayPal.
 - [ ] **Reembolsos**: el panel registra un reembolso, pero el dinero se devuelve desde PayPal.
 
 ## Estructura
@@ -140,14 +156,17 @@ Decisiones técnicas que conviene conocer:
 - El **modelo de diseño** se guarda en centímetros relativos a la zona de impresión (capas de imagen, texto y
   pegatina). El mismo código de precios (`src/lib/pricing.ts`) se usa en el editor y en el servidor, y el servidor
   **vuelve a calcular todo** al crear el pedido: nunca se acepta un importe del cliente.
-- El editor genera, al añadir al carrito, una vista previa por vista y un **PNG transparente a 300 dpi por zona** de
-  impresión; el panel permite descargarlos para producción.
+- El editor genera, al añadir al carrito, una vista previa por vista y un **PNG transparente a 300 ppp por zona** de
+  impresión (con la resolución anotada en el propio archivo); el panel permite descargarlos para producción. Si una
+  foto grande hace que el PNG pese más de lo que admite la subida (`site.uploads.maxPrintBytes`, 20 MB), el editor
+  lo vuelve a dibujar con menos ppp, hasta un mínimo de 150, y el panel muestra los ppp reales de cada archivo.
 - Las subidas se validan por su **estructura** (PNG, JPEG y WebP completos y con dimensiones razonables; no por la
   extensión ni el tipo declarado). Los SVG se aceptan solo si pasan una **lista blanca** de elementos y atributos
   (sin scripts, enlaces externos ni `@import`), se sirven siempre como descarga y con cabeceras restrictivas
   (`nosniff`, CSP *sandbox*). Los cuerpos de las peticiones se leen con un tope real de bytes.
-- El servidor comprueba que el **PNG de impresión mide lo que se cobra** (la caja envolvente del diseño a 300 ppp);
-  si no, rechaza la línea: así no se puede declarar un estampado pequeño e imprimir uno grande.
+- El servidor comprueba que el **PNG de impresión mide lo que se cobra** (la caja envolvente del diseño, a una
+  resolución uniforme entre 150 y 300 ppp); si no, rechaza la línea: así no se puede declarar un estampado pequeño
+  e imprimir uno grande.
 - Cabeceras de seguridad en `next.config.ts`: CSP (con `'unsafe-inline'` en scripts porque las páginas son estáticas
   y no usan *nonce*), HSTS y COOP. Si cambias el SDK de PayPal o añades servicios externos, ajusta la CSP.
 - Los pedidos tienen un token público para el enlace de seguimiento (`/pedido/<id>?t=<token>`); la consulta manual

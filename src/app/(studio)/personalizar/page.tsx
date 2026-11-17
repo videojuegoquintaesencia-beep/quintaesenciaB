@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: 'Personaliza tu producto',
   description: 'Elige qué quieres personalizar: camiseta, sudadera con capucha, gorra o taza. Diseña online y mira el resultado al instante.',
   alternates: { canonical: '/personalizar' },
+  // El layout del estudio marca todo /personalizar como noindex; esta página de entrada sí debe indexarse (está en el sitemap).
+  robots: { index: true, follow: true },
 }
 
 const TONES = ['bg-pink-soft', 'bg-yellow-soft', 'bg-teal-soft', 'bg-violet-soft'] as const

@@ -1,6 +1,6 @@
 import { CircleCheck, TriangleAlert } from 'lucide-react'
 import type { ImageLayer } from '@/lib/design'
-import { GOOD_DPI, LOW_DPI } from '@/lib/editor/constants'
+import { GOOD_DPI, LOW_DPI, PRINT_DPI } from '@/lib/editor/constants'
 import { effectiveDpi } from '@/lib/editor/geometry'
 import type { LoadedImage } from '@/lib/editor/images'
 import { cn } from '@/lib/cn'
@@ -39,7 +39,7 @@ export function ResolutionHint({ layer, image }: { layer: ImageLayer; image?: Lo
         ? `Resolución baja (${dpi} ppp), puede verse pixelado. Reduce el tamaño o sube una imagen más grande.`
         : ok
           ? `Resolución buena (${dpi} ppp).`
-          : `Resolución aceptable (${dpi} ppp). Para el máximo detalle, lo ideal son 200 ppp o más.`}
+          : `Resolución aceptable (${dpi} ppp). Para el máximo detalle, lo ideal son ${PRINT_DPI} ppp.`}
     </p>
   )
 }

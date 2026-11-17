@@ -2,6 +2,7 @@ import { PartyPopper } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
 import { OrderAutoRefresh } from '@/components/checkout/OrderAutoRefresh'
 import { OrderItems } from '@/components/checkout/OrderItems'
 import { OrderTimeline } from '@/components/checkout/OrderTimeline'
@@ -13,11 +14,27 @@ import { isValidId } from '@/lib/ids'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from '@/lib/order-status'
 import { getOrderByToken, type Order } from '@/lib/orders'
 
-export const metadata: Metadata = {
-  title: 'Tu pedido',
-  robots: { index: false, follow: false },
-  // El enlace lleva un token secreto: que no viaje en la cabecera Referer a otras webs.
-  referrer: 'no-referrer',
+type PageProps = {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ t?: string | string[] }>
+}
+
+/** Busca el pedido una sola vez por petición: lo comparten generateMetadata y la página. */
+const loadOrder = cache(async (id: string, token: string | string[] | undefined): Promise<Order | null> => {
+  if (!isValidId(id) || typeof token !== 'string' || token.length < 10) return null
+  return getOrderByToken(id, token)
+})
+
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const [{ id }, { t }] = await Promise.all([params, searchParams])
+  const order = await loadOrder(id, t)
+  return {
+    // Con un enlace inválido la página responde 404: la pestaña también lo dice.
+    title: order ? 'Tu pedido' : 'Página no encontrada',
+    robots: { index: false, follow: false },
+    // El enlace lleva un token secreto: que no viaje en la cabecera Referer a otras webs.
+    referrer: 'no-referrer',
+  }
 }
 
 /** Se considera "recién pagado" durante las 3 horas siguientes al pago. */
@@ -27,16 +44,9 @@ function justPaid(order: Order): boolean {
   return order.status === 'paid' && !!order.payment.paidAt && Date.now() - new Date(order.payment.paidAt).getTime() < JUST_PAID_MS
 }
 
-export default async function OrderPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ t?: string | string[] }>
-}) {
+export default async function OrderPage({ params, searchParams }: PageProps) {
   const [{ id }, { t }] = await Promise.all([params, searchParams])
-  if (!isValidId(id) || typeof t !== 'string' || t.length < 10) notFound()
-  const order = await getOrderByToken(id, t)
+  const order = await loadOrder(id, t)
   if (!order) notFound()
 
   const thanks = justPaid(order)
@@ -62,7 +72,7 @@ export default async function OrderPage({
         </p>
         <p className="mt-3 max-w-2xl text-ink-soft">
           {thanks
-            ? `Te hemos enviado la confirmación a ${order.email}. Producimos tu pedido en ${site.production.leadDaysMin}-${site.production.leadDaysMax} días laborables y después sale por ${site.shipping.carrierLabel}.`
+            ? `Te hemos enviado la confirmación a ${order.email}. Producimos tu pedido en ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables y después sale por ${site.shipping.carrierLabel}.`
             : ORDER_STATUS_CUSTOMER_TEXT[order.status]}
         </p>
         {order.payment.provider === 'demo' && (

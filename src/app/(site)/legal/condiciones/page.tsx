@@ -8,7 +8,7 @@ import { formatEUR } from '@/lib/format'
 export const metadata: Metadata = pageMetadata({
   title: 'Condiciones de venta',
   description:
-    'Condiciones de compra de productos personalizados: pedidos, precios con IVA, pago con PayPal, plazos y envíos, desistimiento, garantía legal de 3 años y derechos sobre tu diseño.',
+    'Condiciones de compra de productos personalizados: pedidos, precios con IVA, pago, envíos, desistimiento, garantía legal de 3 años y derechos sobre tu diseño.',
   path: '/legal/condiciones',
 })
 
@@ -80,7 +80,7 @@ const SECTIONS: LegalSection[] = [
     content: (
       <>
         <p>
-          Todos los precios están en euros e incluyen el {vatPct} % de IVA. El coste de envío se te muestra antes de pagar, también con
+          Todos los precios están en euros e incluyen el {vatPct}&nbsp;% de IVA. El coste de envío se te muestra antes de pagar, también con
           IVA incluido.
         </p>
         <p>
@@ -105,8 +105,9 @@ const SECTIONS: LegalSection[] = [
           tenemos acceso a los datos de tu tarjeta ni de tu cuenta de PayPal.
         </p>
         <p>
-          Si compras como empresa o autónomo, indica el nombre de la empresa y el NIF/CIF al hacer el pedido para que podamos emitir la
-          factura con tus datos. Si no lo hiciste, escríbenos con tu número de pedido.
+          Si compras como empresa o autónomo, marca «Compro como empresa o autónomo» e indica el nombre de la empresa y el NIF/CIF al
+          hacer el pedido: te enviamos la factura por email con esos datos. Si necesitas factura completa y no lo hiciste, o compras
+          como consumidor, escríbenos con tu número de pedido y tus datos fiscales.
         </p>
         <p>Si te corresponde un reembolso, lo hacemos por el mismo medio de pago que usaste.</p>
       </>
@@ -275,7 +276,7 @@ const SECTIONS: LegalSection[] = [
         </p>
         <p>
           Si no estás conforme con nuestra respuesta, puedes acudir a los servicios de consumo de tu comunidad autónoma o de tu
-          ayuntamiento (OMIC).
+          ayuntamiento (OMIC). No estamos adheridos a ningún sistema de arbitraje de consumo.
         </p>
       </>
     ),

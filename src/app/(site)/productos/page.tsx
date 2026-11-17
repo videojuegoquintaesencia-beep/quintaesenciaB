@@ -9,16 +9,17 @@ import { ProductCard } from '@/components/catalog/ProductCard'
 import { CATEGORY_LABELS } from '@/components/catalog/appearance'
 import { JsonLd } from '@/components/site/JsonLd'
 import { formatEUR } from '@/lib/format'
+import { OG_IMAGES } from '@/lib/og-meta'
 
-const title = 'Productos personalizables: camisetas, sudaderas, gorras y tazas'
+const title = 'Productos personalizables: ropa, gorras y tazas'
 const description =
-  'Elige tu producto y diséñalo online: camisetas, sudaderas con capucha, gorras y tazas con impresión DTF. Sin mínimo de unidades y con precios claros, IVA incluido.'
+  'Elige tu producto y diséñalo online: camisetas, sudaderas, gorras y tazas con impresión DTF. Sin mínimo de unidades y con precios claros, IVA incluido.'
 
 export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: '/productos' },
-  openGraph: { title, description, url: '/productos', type: 'website', locale: 'es_ES', siteName: site.name },
+  openGraph: { title, description, url: '/productos', type: 'website', locale: 'es_ES', siteName: site.name, images: OG_IMAGES },
 }
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
@@ -94,7 +95,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
               <div>
                 <h3 className="text-xl">Descuentos por volumen</h3>
                 <p className="mt-1 text-ink-soft">
-                  Hasta un {maxDiscount} % menos cuando pides muchas unidades iguales.{' '}
+                  Hasta un {maxDiscount}&nbsp;% menos cuando pides muchas unidades iguales.{' '}
                   <Link href="/empresas" className="inline-flex items-center gap-1 font-bold text-violet-deep underline underline-offset-4">
                     Pedidos para empresas <ArrowRight aria-hidden="true" size={15} />
                   </Link>
@@ -104,10 +105,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             <li className="card flex gap-4 p-5">
               <Truck aria-hidden="true" className="mt-1 shrink-0 text-violet-deep" size={28} />
               <div>
-                <h3 className="text-xl">Envío a toda España</h3>
+                <h3 className="text-xl">Envío a {site.shipping.deliveryZonesLabel}</h3>
                 <p className="mt-1 text-ink-soft">
-                  Producción en {site.production.leadDaysMin}–{site.production.leadDaysMax} días laborables y {site.shipping.carrierLabel}. Gratis
-                  desde {formatEUR(site.shipping.freeFromCents, { compact: true })}, salvo {site.shipping.excludedZonesLabel}.
+                  Producción de {site.production.leadDaysMin} a {site.production.leadDaysMax} días laborables y {site.shipping.carrierLabel}. Gratis
+                  desde {formatEUR(site.shipping.freeFromCents, { compact: true })}. No enviamos a {site.shipping.excludedZonesLabel} desde la tienda online.
                 </p>
               </div>
             </li>

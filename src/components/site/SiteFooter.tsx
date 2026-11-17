@@ -140,8 +140,7 @@ export function SiteFooter() {
             Pago seguro con PayPal
           </p>
           <p>
-            Precios con IVA incluido. Envío gratis desde {formatEUR(shipping.freeFromCents, { compact: true })} a toda España
-            (salvo {shipping.excludedZonesLabel}).
+            Precios con IVA incluido. Envío gratis desde {formatEUR(shipping.freeFromCents, { compact: true })} a {shipping.deliveryZonesLabel}.
           </p>
         </div>
         <p className="mt-4 text-sm text-cream/70">

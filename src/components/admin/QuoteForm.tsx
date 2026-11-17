@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useId, useState } from 'react'
-import { QUOTE_STATUSES, QUOTE_STATUS_LABEL, type QuoteStatus } from '@/lib/order-status'
+import { QUOTE_STATUS_LABEL, statusesForKind, type QuoteStatus } from '@/lib/order-status'
 import { postJson } from '@/lib/admin/client'
 import { Feedback } from './Feedback'
 import { Panel } from './Panel'
@@ -10,10 +10,12 @@ import { Panel } from './Panel'
 /** Estado y nota interna de un presupuesto o mensaje, en un único formulario. */
 export function QuoteForm({
   quoteId,
+  kind,
   status,
   adminNote,
 }: {
   quoteId: string
+  kind: 'quote' | 'contact'
   status: QuoteStatus
   adminNote: string | null
 }) {
@@ -25,6 +27,8 @@ export function QuoteForm({
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
   const dirty = statusValue !== saved.status || note !== saved.note
+  // Si un mensaje antiguo tiene un estado de presupuesto, se sigue mostrando para que el desplegable no mienta.
+  const options = statusesForKind(kind).includes(status) ? statusesForKind(kind) : [...statusesForKind(kind), status]
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -58,7 +62,7 @@ export function QuoteForm({
               setNotice(null)
             }}
           >
-            {QUOTE_STATUSES.map((s) => (
+            {options.map((s) => (
               <option key={s} value={s}>
                 {QUOTE_STATUS_LABEL[s]}
               </option>
@@ -81,7 +85,9 @@ export function QuoteForm({
             aria-describedby={`${uid}-hint`}
           />
           <p id={`${uid}-hint`} className="field-hint">
-            Precio acordado, qué falta por enviar… Solo la ves tú.
+            {kind === 'quote'
+              ? 'Precio acordado, qué falta por enviar… Solo la ves tú.'
+              : 'Qué le has respondido, si queda algo pendiente… Solo la ves tú.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

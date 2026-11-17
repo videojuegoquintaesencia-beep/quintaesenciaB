@@ -5,22 +5,22 @@ import { formatNumber } from '@/lib/format'
 export function PrintAreaTable() {
   const rows = PRODUCTS.flatMap((p) => allAreas(p).map((a) => ({ product: p.namePlural, area: a.label, w: a.widthCm, h: a.heightCm })))
   return (
-    <div className="card overflow-hidden">
-      <table className="w-full border-collapse text-left">
+    <div className="card overflow-x-auto">
+      <table className="w-full border-collapse text-left text-[0.95rem] sm:text-base">
         <caption className="sr-only">Tamaño máximo de estampado por producto y zona, en centímetros.</caption>
         <thead>
           <tr className="bg-yellow-soft">
-            <th scope="col" className="border-b-2 border-ink p-3 font-display font-semibold">Producto</th>
-            <th scope="col" className="border-b-2 border-ink p-3 font-display font-semibold">Zona</th>
-            <th scope="col" className="border-b-2 border-ink p-3 text-right font-display font-semibold">Máximo</th>
+            <th scope="col" className="border-b-2 border-ink p-2 font-display font-semibold sm:p-3">Producto</th>
+            <th scope="col" className="border-b-2 border-ink p-2 font-display font-semibold sm:p-3">Zona</th>
+            <th scope="col" className="border-b-2 border-ink p-2 text-right font-display font-semibold sm:p-3">Máximo</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={`${r.product}-${r.area}`} className={i < rows.length - 1 ? 'border-b border-ink/25' : undefined}>
-              <th scope="row" className="p-3 font-bold">{r.product}</th>
-              <td className="p-3 text-ink-soft">{r.area}</td>
-              <td className="whitespace-nowrap p-3 text-right font-bold">
+              <th scope="row" className="p-2 font-bold sm:p-3">{r.product}</th>
+              <td className="p-2 text-ink-soft sm:p-3">{r.area}</td>
+              <td className="whitespace-nowrap p-2 text-right font-bold sm:p-3">
                 {formatNumber(r.w)} × {formatNumber(r.h)} cm
               </td>
             </tr>

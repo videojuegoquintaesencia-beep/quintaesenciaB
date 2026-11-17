@@ -5,9 +5,10 @@
  */
 import 'server-only'
 import { site } from '@/config/site'
-import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, sendMail, type MailResult } from '../email'
-import { formatEUR } from '../format'
+import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, ownerLine, sendMail, type MailResult } from '../email'
+import { formatEUR, unidades } from '../format'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL } from '../order-status'
+import { ENTITY_WORD } from './names'
 import type { Order, OrderItem } from '../orders'
 
 /** Enlace público de seguimiento del pedido (incluye el token secreto). */
@@ -20,13 +21,19 @@ const LINE = '#e9e3f5'
 
 /* ───────────── Piezas comunes ───────────── */
 
-const firstName = (order: Order) => order.customerName.trim().split(/\s+/)[0] ?? order.customerName
+/** Nombre de pila para el saludo; si el nombre es el de una entidad ("Club Deportivo Los Pinos") se usa entero. */
+const firstName = (order: Order) => {
+  const full = order.customerName.trim()
+  const first = full.split(/\s+/)[0] ?? full
+  return ENTITY_WORD.test(first) ? full : first
+}
 
+/** "2 × M, 1 × L · 3 unidades" (en productos de talla única, solo "6 unidades"). */
 function sizesText(it: OrderItem): string {
-  const parts = Object.entries(it.sizes)
-    .filter(([, q]) => q > 0)
-    .map(([size, q]) => (size === 'unica' ? `${q} ud.` : `${q} × ${size}`))
-  return parts.join(', ')
+  const sized = Object.entries(it.sizes)
+    .filter(([size, q]) => q > 0 && size !== 'unica')
+    .map(([size, q]) => `${q} × ${size}`)
+  return sized.length > 0 ? `${sized.join(', ')} · ${unidades(it.quantity)}` : unidades(it.quantity)
 }
 
 function addressLines(order: Order): string[] {
@@ -43,13 +50,13 @@ function itemsHtml(order: Order): string {
     .map((it) => {
       const discount =
         it.discountCents > 0
-          ? `<br><span style="font-size:13px;color:${MUTED}">Descuento por cantidad (${it.discountPct} %): −${esc(formatEUR(it.discountCents))}</span>`
+          ? `<br><span style="font-size:13px;color:${MUTED}">Descuento por cantidad (${it.discountPct}\u00a0%): −${esc(formatEUR(it.discountCents))}</span>`
           : ''
       return `<tr>
         <td style="padding:10px 0;border-bottom:1px solid ${LINE};vertical-align:top">
           <strong>${esc(it.productName)}</strong>
           <span style="display:inline-block;width:11px;height:11px;margin:0 4px 0 8px;border:1px solid #1b1340;border-radius:50%;background:${esc(it.colorHex)};vertical-align:middle"></span>${esc(it.colorName)}<br>
-          <span style="font-size:14px;color:${MUTED}">${esc(sizesText(it))} · ${it.quantity} ${it.quantity === 1 ? 'unidad' : 'unidades'}</span>${discount}
+          <span style="font-size:14px;color:${MUTED}">${esc(sizesText(it))}</span>${discount}
         </td>
         <td style="padding:10px 0 10px 12px;border-bottom:1px solid ${LINE};text-align:right;white-space:nowrap;vertical-align:top;font-weight:700">${esc(formatEUR(it.totalCents))}</td>
       </tr>`
@@ -76,7 +83,7 @@ function addressHtml(order: Order): string {
 function itemsText(order: Order): string {
   return order.items
     .map((it) => {
-      const discount = it.discountCents > 0 ? ` (descuento ${it.discountPct} %: −${formatEUR(it.discountCents)})` : ''
+      const discount = it.discountCents > 0 ? ` (descuento ${it.discountPct}\u00a0%: −${formatEUR(it.discountCents)})` : ''
       return `- ${it.productName}, ${it.colorName} · ${sizesText(it)} · ${formatEUR(it.totalCents)}${discount}`
     })
     .join('\n')
@@ -94,34 +101,57 @@ const isDemo = (order: Order) => order.payment.provider === 'demo'
 
 /* ───────────── Confirmación al cliente ───────────── */
 
+/** Información precontractual en soporte duradero (art. 98.7 y 103.c TRLGDCU) y datos de factura. */
+function legalNoticeParts(order: Order) {
+  const conditionsUrl = absoluteUrl('/legal/condiciones')
+  const withdrawal =
+    'Al ser productos personalizados, este pedido no tiene derecho de desistimiento de 14 días (art. 103.c del texto refundido de la Ley General para la Defensa de los Consumidores y Usuarios). Si compras como consumidor, conservas la garantía legal de 3 años por falta de conformidad.'
+  const billing =
+    order.company || order.taxId
+      ? `Datos de facturación: ${[order.company, order.taxId].filter(Boolean).join(' · ')}. Te enviaremos la factura por email.`
+      : '¿Necesitas factura? Responde a este email con tu número de pedido y tus datos fiscales.'
+  return { conditionsUrl, withdrawal, billing }
+}
+
 export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
   const url = orderTrackingUrl(order)
-  const lead = `${site.production.leadDaysMin}-${site.production.leadDaysMax} días laborables`
-  const demoHtml = isDemo(order)
+  const lead = `de ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables`
+  const demo = isDemo(order)
+  const notice = legalNoticeParts(order)
+  const demoHtml = demo
     ? `<p style="background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Pedido de demostración: no se ha cobrado nada.</p>`
     : ''
   const html = emailShell({
     title: `¡Gracias, ${firstName(order)}! Tu pedido ${order.number} está confirmado`,
-    preheader: `Hemos recibido tu pago de ${formatEUR(order.totalCents)}. Empezamos con tu diseño.`,
+    preheader: demo
+      ? 'Pedido de demostración: no se ha cobrado nada.'
+      : `Hemos recibido tu pago de ${formatEUR(order.totalCents)}. Empezamos con tu diseño.`,
     bodyHtml: `${demoHtml}
       <p style="margin:0 0 8px">${esc(ORDER_STATUS_CUSTOMER_TEXT.paid)}</p>
-      <p style="margin:0">Tardamos unos <strong>${esc(lead)}</strong> en producir tu pedido y después sale por ${esc(site.shipping.carrierLabel)}. Te escribiremos en cuanto cambie su estado.</p>
+      <p style="margin:0">Tardamos <strong>${esc(lead)}</strong> en producir tu pedido y después sale por ${esc(site.shipping.carrierLabel)}. Te escribiremos en cuanto cambie su estado.</p>
       ${sectionTitle(`Resumen del pedido ${order.number}`)}
       ${itemsHtml(order)}
       ${totalsHtml(order)}
       ${sectionTitle('Dirección de envío')}
       ${addressHtml(order)}
+      ${sectionTitle('Información importante')}
+      <p style="margin:0 0 8px;font-size:14px;color:${MUTED}"><strong>Desistimiento y garantía.</strong> ${esc(notice.withdrawal)} Condiciones de venta: <a href="${esc(notice.conditionsUrl)}" style="color:#5a3fe0">${esc(notice.conditionsUrl)}</a>.</p>
+      <p style="margin:0 0 8px;font-size:14px;color:${MUTED}"><strong>Factura.</strong> ${esc(notice.billing)}</p>
+      <p style="margin:0;font-size:14px;color:${MUTED}"><strong>Titular.</strong> ${esc(ownerLine())}</p>
       <p style="margin:22px 0 0;font-size:14px;color:${MUTED}">¿Algo no cuadra? Responde a este email o escríbenos a <a href="mailto:${esc(site.contact.email)}" style="color:#5a3fe0">${esc(site.contact.email)}</a> indicando tu número de pedido.</p>`,
     ctaLabel: 'Ver el estado de mi pedido',
     ctaUrl: url,
   })
   const text = [
     `¡Gracias, ${firstName(order)}! Tu pedido ${order.number} está confirmado.`,
-    isDemo(order) ? '\n(Pedido de demostración: no se ha cobrado nada.)' : '',
+    demo ? '\n(Pedido de demostración: no se ha cobrado nada.)' : '',
     `\n${ORDER_STATUS_CUSTOMER_TEXT.paid}`,
     `Producción: ${lead}, y después envío por ${site.shipping.carrierLabel}.`,
     `\nRESUMEN\n${itemsText(order)}\n\n${totalsText(order)}`,
     `\nDIRECCIÓN DE ENVÍO\n${addressLines(order).join('\n')}`,
+    `\nINFORMACIÓN IMPORTANTE\nDesistimiento y garantía: ${notice.withdrawal} Condiciones de venta: ${notice.conditionsUrl}`,
+    `Factura: ${notice.billing}`,
+    `Titular: ${ownerLine()}`,
     `\nVer el estado de tu pedido: ${url}`,
     `Dudas: ${site.contact.email}`,
   ].join('\n')
@@ -146,16 +176,21 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
   const note = opts.note
     ? `<p style="margin:14px 0 0;background:#fff8ec;border:2px solid #1b1340;border-radius:12px;padding:12px 14px">${esc(opts.note)}</p>`
     : ''
+  const demo = isDemo(order)
+  const demoHtml = demo
+    ? `<p style="margin:0 0 12px;background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Pedido de demostración: no se ha cobrado nada.</p>`
+    : ''
   const html = emailShell({
     title: `Pedido ${order.number}: ${label}`,
-    preheader: body,
-    bodyHtml: `<p style="margin:0">${esc(body)}</p>${tracking}${note}
+    preheader: demo ? 'Pedido de demostración: no se ha cobrado nada.' : body,
+    bodyHtml: `${demoHtml}<p style="margin:0">${esc(body)}</p>${tracking}${note}
       <p style="margin:18px 0 0;font-size:14px;color:${MUTED}">Si tienes cualquier duda, responde a este email o escríbenos a ${esc(site.contact.email)}.</p>`,
     ctaLabel: 'Ver mi pedido',
     ctaUrl: url,
   })
   const text = [
     `Pedido ${order.number}: ${label}`,
+    demo ? '(Pedido de demostración: no se ha cobrado nada.)' : '',
     body,
     order.trackingCode ? `Seguimiento del envío: ${order.carrier ?? 'Mensajería'} ${order.trackingCode}` : '',
     opts.note ? `\n${opts.note}` : '',

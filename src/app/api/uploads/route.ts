@@ -7,11 +7,11 @@ import { byteBudget, clientIp, rateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
-/** Peticiones de subida que se procesan a la vez (cada una puede ocupar hasta ~13 MB en memoria). */
-const MAX_IN_FLIGHT = 12
+/** Peticiones de subida que se procesan a la vez (cada una puede ocupar varias veces su tamaño en memoria: hasta ~21 MB). */
+const MAX_IN_FLIGHT = 6
 /** Por IP y 10 minutos: nº de subidas y bytes totales. */
 const UPLOADS_PER_WINDOW = 80
-const BYTES_PER_WINDOW = 200 * 1024 * 1024
+const BYTES_PER_WINDOW = 400 * 1024 * 1024
 const WINDOW_MS = 10 * 60_000
 
 type G = typeof globalThis & { __puUploadsInFlight?: number }
@@ -26,7 +26,7 @@ const tooMany = (error: string, retryAfterSec: number) =>
  *
  *  - artwork / quote: arte o logotipo del cliente (PNG, JPG, WebP o SVG), hasta site.uploads.maxArtworkBytes
  *  - preview: render del producto con el diseño (PNG/JPG/WebP generado por el editor)
- *  - print: PNG transparente listo para imprimir (generado por el editor)
+ *  - print: PNG transparente listo para imprimir (generado por el editor), hasta site.uploads.maxPrintBytes
  *
  * El cuerpo se lee con un tope real de bytes (aunque no haya Content-Length) y el archivo se valida por su
  * estructura (ver lib/files.ts: inspectUpload), no solo por la cabecera.
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
 }
 
 async function handleUpload(req: Request, ip: string): Promise<Response> {
-  // Archivo máximo + margen para los campos y delimitadores del multipart.
-  const read = await readBodyForm(req, site.uploads.maxArtworkBytes + 1024 * 1024)
+  // Archivo máximo (el mayor de todos los tipos) + margen para los campos y delimitadores del multipart.
+  const read = await readBodyForm(req, Math.max(site.uploads.maxArtworkBytes, site.uploads.maxPrintBytes) + 1024 * 1024)
   if (!read.ok) {
     return read.status === 413
       ? Response.json({ error: 'El archivo es demasiado grande.' }, { status: 413 })
@@ -65,7 +65,12 @@ async function handleUpload(req: Request, ip: string): Promise<Response> {
   const file = form.get('file')
   if (!(file instanceof File) || file.size === 0) return Response.json({ error: 'Falta el archivo.' }, { status: 400 })
 
-  const maxBytes = kind === 'artwork' || kind === 'quote' ? site.uploads.maxArtworkBytes : site.uploads.maxGeneratedBytes
+  const maxBytes =
+    kind === 'artwork' || kind === 'quote'
+      ? site.uploads.maxArtworkBytes
+      : kind === 'print'
+        ? site.uploads.maxPrintBytes
+        : site.uploads.maxGeneratedBytes
   if (file.size > maxBytes) {
     return Response.json(
       { error: `El archivo supera el máximo de ${Math.round(maxBytes / 1024 / 1024)} MB.` },

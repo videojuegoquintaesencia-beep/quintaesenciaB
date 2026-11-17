@@ -7,7 +7,8 @@ export function telHref(phone: string): string {
 
 /** Enlace wa.me con mensaje inicial; cadena vacía si no hay WhatsApp configurado. */
 export function whatsappHref(message = 'Hola, quería información sobre un pedido personalizado.'): string {
-  const number = site.contact.whatsapp.replace(/\D/g, '')
+  const whatsapp: string = site.contact.whatsapp
+  const number = whatsapp.replace(/\D/g, '')
   return number ? `https://wa.me/${number}?text=${encodeURIComponent(message)}` : ''
 }
 

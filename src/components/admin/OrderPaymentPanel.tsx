@@ -58,7 +58,7 @@ export function PaymentPanel({ order }: { order: Order }) {
           <dt className="font-extrabold">Total</dt>
           <dd className="font-display text-2xl font-semibold tabular-nums">{formatEUR(order.totalCents)}</dd>
         </div>
-        <Row label="IVA incluido (21 %)">{formatEUR(order.vatCents)}</Row>
+        <Row label="IVA incluido (21&nbsp;%)">{formatEUR(order.vatCents)}</Row>
       </dl>
     </Panel>
   )

@@ -22,15 +22,18 @@ function Breakdown({ priced }: { priced: PricedLine }) {
   const { price } = priced
   if (!price) return null
   const unit = (cents: number) => `${formatEUR(cents)} × ${price.quantity}`
+  // El precio unitario base ya incluye el suplemento del color (p. ej. el interior de color de las tazas): se muestra aparte.
+  const surchargeCents = priced.product ? price.unitBaseCents - priced.product.basePriceCents : 0
   return (
     <dl className="space-y-1 rounded-2xl bg-cream p-3 text-sm" aria-label="Desglose del precio">
-      <Row label={priced.product?.name ?? 'Producto'} value={unit(price.unitBaseCents)} />
+      <Row label={priced.product?.name ?? 'Producto'} value={unit(priced.product?.basePriceCents ?? price.unitBaseCents)} />
+      {surchargeCents > 0 && <Row label={`Suplemento de color${priced.color ? ` · ${priced.color.name}` : ''}`} value={unit(surchargeCents)} />}
       {price.prints.map((p) => (
         <Row key={p.areaId} label={`Estampado · ${p.label}`} value={unit(p.cents)} />
       ))}
       {price.sizeSurchargeCents > 0 && <Row label="Suplemento de talla" value={formatEUR(price.sizeSurchargeCents)} />}
       {price.discountCents > 0 && (
-        <Row label={`Descuento por cantidad (${price.discountPct} %)`} value={`−${formatEUR(price.discountCents)}`} />
+        <Row label={`Descuento por cantidad (${price.discountPct}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
       )}
       <Row label={`Total de la línea · ${unidades(price.quantity)}`} value={formatEUR(price.totalCents)} strong />
     </dl>

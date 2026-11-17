@@ -44,7 +44,7 @@ export function BusinessStrip() {
                 key={d.minQty}
                 className={`rounded-2xl border-2 border-ink p-4 text-ink shadow-[4px_4px_0_0_var(--color-cream)] ${['bg-pink-soft', 'bg-yellow-soft', 'bg-teal-soft', 'bg-violet-soft'][i % 4]} ${i === discounts.length - 1 && discounts.length % 2 === 1 ? 'col-span-2' : ''}`}
               >
-                <p className="font-display text-3xl font-bold leading-none">{d.pct} %</p>
+                <p className="font-display text-3xl font-bold leading-none">{d.pct}&nbsp;%</p>
                 <p className="mt-1.5 text-sm font-bold">desde {d.minQty} unidades</p>
               </li>
             ))}

@@ -29,13 +29,13 @@ export function NotFoundContent() {
             </div>
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-bold">
               <li>
-                <Link href="/productos" className="inline-flex min-h-8 items-center gap-2 text-violet-deep underline underline-offset-4">
+                <Link href="/productos" className="inline-flex min-h-8 items-center gap-2 text-violet-deep underline underline-offset-4 pointer-coarse:min-h-11">
                   <ShoppingBag aria-hidden="true" size={18} />
                   Ver productos
                 </Link>
               </li>
               <li>
-                <Link href="/contacto" className="inline-flex min-h-8 items-center gap-2 text-violet-deep underline underline-offset-4">
+                <Link href="/contacto" className="inline-flex min-h-8 items-center gap-2 text-violet-deep underline underline-offset-4 pointer-coarse:min-h-11">
                   <Mail aria-hidden="true" size={18} />
                   Escribirnos
                 </Link>

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     title: `${site.name} — ${site.tagline}`,
     description: site.description,
   },
-  robots: { index: true, follow: true },
+  twitter: { card: 'summary_large_image' },
 }
 
 export const viewport: Viewport = {

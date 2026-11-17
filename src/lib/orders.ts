@@ -114,9 +114,9 @@ export interface OrderSummary {
 export const ORDER_NUMBER_OFFSET = 1000
 export const formatOrderNumber = (seq: number) => `PU-${ORDER_NUMBER_OFFSET + seq}`
 
-/** "PU-1042" (o "pu1042") → seq 42. Devuelve null si no tiene el formato esperado. */
+/** "PU-1042" (o "pu1042", o solo "1042") → seq 42. Devuelve null si no tiene el formato esperado. */
 export function parseOrderNumber(value: string): number | null {
-  const m = /^\s*pu[-\s]?(\d{4,9})\s*$/i.exec(value)
+  const m = /^\s*(?:pu[-\s]?)?(\d{4,9})\s*$/i.exec(value)
   if (!m) return null
   const seq = Number(m[1]) - ORDER_NUMBER_OFFSET
   return Number.isInteger(seq) && seq > 0 ? seq : null
@@ -449,7 +449,7 @@ export async function addOrderEvent(orderId: string, note: string, actor: OrderA
 export interface ListOrdersOptions {
   /** Un estado concreto, "all" (todos), "open" (pagados y aún sin entregar) o "active" (pagados pendientes de producir/enviar). */
   status?: OrderStatus | 'all' | 'open' | 'active'
-  /** Búsqueda por número de pedido, nombre, email o empresa. */
+  /** Búsqueda por número de pedido (con o sin "PU-"), nombre, email o empresa. */
   q?: string
   limit?: number
   offset?: number

@@ -1,14 +1,58 @@
 @import 'tailwindcss';
 
 /* ───────────────────────────────────────────────────────────
+   Tipografías de respaldo con las métricas de Fredoka y Nunito.
+   Mientras las fuentes reales se descargan (font-display: swap) el texto se pinta con Arial (o su equivalente
+   métrico Liberation Sans/Arimo), escalado y con alturas de línea ajustadas para que ocupe lo mismo que
+   Fredoka/Nunito: así el cambio de fuente no recoloca los párrafos ni empuja el contenido (CLS).
+   Valores medidos con las propias fuentes de la web.
+   ─────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Fredoka Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans'), local('Arimo');
+  font-weight: 300 500;
+  size-adjust: 99.7%;
+  ascent-override: 97.7%;
+  descent-override: 23.7%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Fredoka Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold'), local('Arimo Bold');
+  font-weight: 600 700;
+  size-adjust: 93.1%;
+  ascent-override: 104.6%;
+  descent-override: 25.3%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Nunito Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans'), local('Arimo');
+  font-weight: 300 500;
+  size-adjust: 99.7%;
+  ascent-override: 101.4%;
+  descent-override: 35.4%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Nunito Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold'), local('Arimo Bold');
+  font-weight: 600 900;
+  size-adjust: 97.5%;
+  ascent-override: 103.7%;
+  descent-override: 36.2%;
+  line-gap-override: 0%;
+}
+
+/* ───────────────────────────────────────────────────────────
    Pieza Única — sistema de diseño "pop"
    Colores saturados, bordes gruesos de tinta, sombras duras,
    formas redondeadas y tipografía amable.
    ─────────────────────────────────────────────────────────── */
 
 @theme {
-  --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
-  --font-sans: 'Nunito Variable', 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fredoka Variable', 'Fredoka Fallback', 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --font-sans: 'Nunito Variable', 'Nunito Fallback', 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --color-ink: #1b1340;
   --color-ink-soft: #4a4270;

@@ -10,8 +10,9 @@ import { useCartHydrated } from './useCartHydrated'
 function CartSkeleton() {
   return (
     <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px]" aria-busy="true" aria-label="Cargando tu carrito">
-      <div className="card h-72 animate-pulse bg-cream" />
-      <div className="card h-72 animate-pulse bg-cream" />
+      {/* Altura parecida a la del carrito vacío (el caso más habitual): al cargar no se desplaza el pie de página. */}
+      <div className="card h-[19rem] animate-pulse bg-cream" />
+      <div className="card hidden h-[19rem] animate-pulse bg-cream lg:block" />
     </div>
   )
 }

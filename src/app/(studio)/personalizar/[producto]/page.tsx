@@ -12,10 +12,13 @@ export function generateStaticParams() {
   return PRODUCTS.map((p) => ({ producto: p.id }))
 }
 
+// Catálogo cerrado: cualquier otro producto responde 404 con la página de error de toda la web.
+export const dynamicParams = false
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { producto } = await params
   const product = getProduct(producto)
-  if (!product) return { title: 'Producto no encontrado' }
+  if (!product) return { title: 'Página no encontrada' }
   return {
     title: `Personaliza tu ${product.name.toLowerCase()}`,
     description: `Diseña tu ${product.name.toLowerCase()} online: sube tu imagen, añade texto y pegatinas y mira el resultado antes de pedir.`,

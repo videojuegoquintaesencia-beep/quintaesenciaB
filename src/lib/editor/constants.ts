@@ -3,8 +3,12 @@
 /** Resolución objetivo de los archivos de impresión (ppp / dpi). */
 export const PRINT_DPI = 300
 export const MIN_PRINT_DPI = 150
-/** Límite de píxeles de un archivo de impresión (los canvas de iOS fallan por encima de ~16,7 M). */
-export const MAX_PRINT_PIXELS = 16_000_000
+/**
+ * Límite de píxeles de un archivo de impresión: los canvas de iOS fallan por encima de 16.777.216 (4096 × 4096).
+ * Con este tope el área más grande de una camiseta (30 × 40 cm = 3.544 × 4.725 px) sale a 300 ppp justos;
+ * las zonas mayores (espalda de la sudadera, 32 × 40 cm) bajan a ~290 ppp, y el PNG lleva anotados los ppp reales.
+ */
+export const MAX_PRINT_PIXELS = 16_760_000
 /** Ancho en píxeles de las vistas previas del producto. */
 export const PREVIEW_WIDTH_PX = 900
 

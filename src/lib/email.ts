@@ -20,6 +20,12 @@ export function absoluteUrl(path = '/'): string {
   return `${site.url}${path.startsWith('/') ? path : `/${path}`}`
 }
 
+/** Datos del titular para el pie de los emails (art. 10 LSSI-CE): "Razón social · NIF … · Domicilio". */
+export function ownerLine(): string {
+  const { legalName, taxId, registeredAddress } = site.business
+  return `${legalName} · NIF ${taxId} · ${registeredAddress}`
+}
+
 /** Dirección que recibe los avisos internos (pedidos nuevos, presupuestos, mensajes). */
 export function adminNotifyAddress(): string | null {
   return process.env.ADMIN_NOTIFY_EMAIL || site.contact.email || null
@@ -120,7 +126,9 @@ export function emailShell(opts: {
     </td></tr>
     <tr><td style="padding:18px 8px;font-size:13px;line-height:1.5;color:#4a4270;text-align:center">
       ${escapeHtml(site.name)} · ${escapeHtml(site.contact.email)}${site.contact.phone ? ` · ${escapeHtml(site.contact.phone)}` : ''}<br>
-      Recibes este email porque has hecho un pedido o una consulta en ${escapeHtml(site.url.replace(/^https?:\/\//, ''))}.
+      ${escapeHtml(ownerLine())}<br>
+      <a href="${escapeHtml(absoluteUrl('/legal/aviso-legal'))}" style="color:#4a4270">Aviso legal</a> · <a href="${escapeHtml(absoluteUrl('/legal/privacidad'))}" style="color:#4a4270">Privacidad</a><br>
+      Recibes este email porque has hecho un pedido o una consulta en ${escapeHtml(site.name)}.
     </td></tr>
   </table>
 </td></tr></table></body></html>`

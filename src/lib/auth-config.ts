@@ -7,6 +7,8 @@
  * exige nada (hay valores por defecto para trabajar).
  */
 
+import { sitePlaceholders } from '@/config/site'
+
 export const MIN_ADMIN_PASSWORD_LENGTH = 12
 export const MIN_SESSION_SECRET_LENGTH = 32
 
@@ -49,6 +51,21 @@ export function productionConfigIssues(): { level: 'error' | 'warn'; message: st
   if (!isProduction()) return []
   const issues: { level: 'error' | 'warn'; message: string }[] = adminAuthProblems().map((message) => ({ level: 'error', message }))
   const env = process.env
+  const siteUrl = (env.NEXT_PUBLIC_SITE_URL ?? '').trim()
+  if (siteUrl === '' || /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(siteUrl)) {
+    issues.push({
+      level: 'error',
+      message:
+        'NEXT_PUBLIC_SITE_URL no está definido (o apunta a localhost): los enlaces de los emails (seguimiento del pedido, panel), el sitemap y las URL canónicas saldrán con http://localhost:3000. Defínelo con el dominio público (https://…) ANTES de compilar (next build).',
+    })
+  }
+  const placeholders = sitePlaceholders()
+  if (placeholders.length > 0) {
+    issues.push({
+      level: 'error',
+      message: `Completa src/config/site.ts antes de publicar: siguen siendo datos de ejemplo ${placeholders.join(', ')}. El aviso legal (art. 10 LSSI-CE) y los emails saldrían con datos ficticios.`,
+    })
+  }
   if (env.TRUSTED_PROXY_HOPS === undefined || env.TRUSTED_PROXY_HOPS.trim() === '') {
     issues.push({
       level: 'warn',

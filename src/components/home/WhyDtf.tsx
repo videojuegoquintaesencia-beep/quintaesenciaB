@@ -4,7 +4,7 @@ import { Section, SectionHeading } from '@/components/ui/Section'
 
 const BENEFITS = [
   { icon: Rainbow, title: 'Colores vivos y degradados', text: 'Fotos, degradados y muchos colores a la vez en el mismo diseño.', tone: 'bg-pink-soft' },
-  { icon: Shirt, title: 'Sirve para casi cualquier tejido', text: 'Se adhiere a algodón, poliéster y mezclas, también sobre colores oscuros.', tone: 'bg-teal-soft' },
+  { icon: Shirt, title: 'Funciona en algodón y muchas mezclas', text: 'Se adhiere al algodón y a muchas mezclas con poliéster, también sobre colores oscuros.', tone: 'bg-teal-soft' },
   { icon: Layers, title: 'Sin mínimo de unidades', text: 'Una sola camiseta o muchas: no hace falta preparar pantallas ni pedir una tirada mínima.', tone: 'bg-yellow-soft' },
   { icon: Ruler, title: 'Detalle fino', text: 'Líneas finas y textos pequeños salen nítidos si tu imagen tiene buena resolución.', tone: 'bg-violet-soft' },
   { icon: Feather, title: 'Tacto flexible', text: 'La capa de tinta se adapta a la tela y la acompaña al estirarla.', tone: 'bg-orange-soft' },
@@ -17,7 +17,7 @@ export function WhyDtf() {
         <div>
           <SectionHeading id="dtf-titulo" eyebrow="Por qué DTF" title="Una impresión pensada para diseños con color">
             DTF significa <em>Direct-To-Film</em>: imprimimos tu diseño sobre un film, le añadimos un adhesivo en polvo y lo pasamos a la
-            prenda con una plancha de calor.
+            prenda con una prensa de calor.
           </SectionHeading>
           <Link href="/como-funciona" className="btn btn-secondary">
             Cómo funciona el DTF

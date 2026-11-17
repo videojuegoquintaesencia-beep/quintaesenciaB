@@ -32,7 +32,7 @@ function TocList({ sections }: { sections: LegalSection[] }) {
     <ol className="grid gap-1.5">
       {sections.map((s, i) => (
         <li key={s.id}>
-          <a href={`#${s.id}`} className="flex gap-2 rounded-lg px-2 py-1 font-bold text-ink-soft underline-offset-4 hover:bg-yellow-soft hover:text-ink hover:underline">
+          <a href={`#${s.id}`} className="flex gap-2 rounded-lg px-2 py-1 font-bold text-ink-soft underline-offset-4 hover:bg-yellow-soft hover:text-ink hover:underline pointer-coarse:min-h-11 pointer-coarse:items-center">
             <span aria-hidden="true" className="w-6 shrink-0 text-right">{i + 1}.</span>
             {s.title}
           </a>

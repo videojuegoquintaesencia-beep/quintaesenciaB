@@ -8,6 +8,7 @@ import { editHref, lineTitle } from '@/components/cart/line-utils'
 import { usePricedLines } from '@/components/cart/lines'
 import { useCartHydrated } from '@/components/cart/useCartHydrated'
 import { useCart } from '@/lib/cart-store'
+import { clearDraft } from '@/lib/editor/draft'
 import { provinceFromPostalCode } from '@/lib/es-provinces'
 import { computeCartTotals, isPostalCodeDeliverable, isValidSpanishPostalCode, normalizePostalCode } from '@/lib/pricing'
 import type { PaymentMode } from '@/lib/paypal'
@@ -105,6 +106,8 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
       },
       onPaid: (redirect) => {
         setFinished(true)
+        // El diseño ya es un pedido: si no se borra el borrador, el editor lo recuperaría como si siguiera pendiente.
+        for (const productId of new Set(linesRef.current.map((l) => l.productId))) clearDraft(productId)
         clear()
         router.push(redirect)
       },
@@ -187,7 +190,13 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
           </p>
         )}
 
-        <PaymentSection mode={mode} paypalClientId={paypalClientId} bridge={bridge} />
+        <PaymentSection
+          mode={mode}
+          paypalClientId={paypalClientId}
+          bridge={bridge}
+          totalCents={totals.totalCents}
+          shippingEstimated={!postalCodeKnown}
+        />
       </div>
 
       {processing && (

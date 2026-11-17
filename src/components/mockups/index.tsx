@@ -12,9 +12,10 @@
  *  - <ProductShowcase … variant? art? /> → igual, con un diseño de ejemplo estampado en la zona principal.
  *      `variant` es el índice del diseño (0 … SAMPLE_ART_VARIANTS − 1) o "icon" para la ilustración de catálogo.
  *
- * Los ids internos (degradados, recortes) incluyen producto, vista, color y diseño: son deterministas y no chocan
- * al repetir mockups en la misma página.
+ * Los ids internos (degradados, recortes) incluyen producto, vista, color y diseño, más un sufijo por instancia
+ * (useId, estable entre servidor y cliente): no chocan ni siquiera al repetir el mismo mockup en la página.
  */
+import { useId } from 'react'
 import { getColor, getProduct, getView, type ProductId } from '@/config/products'
 import { SAMPLE_ART_VARIANTS } from './art'
 import { buildMockup, mockupDataUrl, mockupSvg } from './engine'
@@ -44,7 +45,7 @@ export interface ProductShowcaseProps extends Omit<ProductMockupProps, 'variant'
   art?: number
 }
 
-function render(props: ProductMockupProps, art: number | undefined) {
+function render(props: ProductMockupProps, art: number | undefined, idSuffix: string) {
   const { productId, viewId, colorId, className, label, variant, guides } = props
   const product = getProduct(productId)
   if (!product) return null
@@ -52,7 +53,7 @@ function render(props: ProductMockupProps, art: number | undefined) {
   const explicitView = !icon && viewId ? getView(product, viewId) : undefined
   const view = explicitView ?? product.views[0]
   const color = (colorId && getColor(product, colorId)) || product.colors[0]
-  const built = buildMockup({ productId, viewId: view.id, colorHex: color.hex, guides, art, icon })
+  const built = buildMockup({ productId, viewId: view.id, colorHex: color.hex, guides, art, icon, idSuffix })
   if (!built) return null
 
   const colorText = productId === 'taza' ? ` ${color.name.toLowerCase()}` : `, color ${color.name.toLowerCase()}`
@@ -74,10 +75,12 @@ function render(props: ProductMockupProps, art: number | undefined) {
 }
 
 export function ProductMockup(props: ProductMockupProps) {
-  return render(props, undefined)
+  const instance = useId()
+  return render(props, undefined, instance)
 }
 
 export function ProductShowcase({ variant, art, ...rest }: ProductShowcaseProps) {
+  const instance = useId()
   const design = typeof variant === 'number' ? variant : (art ?? 0)
-  return render({ ...rest, variant: variant === 'icon' ? 'icon' : undefined }, design)
+  return render({ ...rest, variant: variant === 'icon' ? 'icon' : undefined }, design, instance)
 }

@@ -10,6 +10,7 @@ import { ProductsSection } from '@/components/home/ProductsSection'
 import { WhyDtf } from '@/components/home/WhyDtf'
 import { contactLinks } from '@/components/site/contact-links'
 import { JsonLd } from '@/components/site/JsonLd'
+import { OG_IMAGES } from '@/lib/og-meta'
 
 const title = `${site.name}: camisetas, sudaderas, gorras y tazas personalizadas`
 
@@ -17,12 +18,18 @@ export const metadata: Metadata = {
   title: { absolute: title },
   description: site.description,
   alternates: { canonical: '/' },
-  openGraph: { title, description: site.description, url: '/', type: 'website', locale: 'es_ES', siteName: site.name },
+  openGraph: { title, description: site.description, url: '/', type: 'website', locale: 'es_ES', siteName: site.name, images: OG_IMAGES },
 }
 
 function structuredData() {
   const links = contactLinks()
   const sameAs = links.filter((l) => l.key === 'instagram' || l.key === 'tiktok').map((l) => l.href)
+  // `site` es `as const`: se ensancha a string para que el teléfono (o el email) vacíos no salgan en el JSON-LD.
+  const contact: Record<keyof typeof site.contact, string> = site.contact
+  const reach = {
+    ...(contact.email ? { email: contact.email } : {}),
+    ...(contact.phone ? { telephone: contact.phone } : {}),
+  }
   const organization = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -31,15 +38,13 @@ function structuredData() {
     url: site.url,
     logo: `${site.url}/icon.svg`,
     description: site.description,
-    email: site.contact.email,
-    telephone: site.contact.phone,
+    ...reach,
     areaServed: site.country,
     sameAs,
     contactPoint: {
       '@type': 'ContactPoint',
-      contactType: 'atención al cliente',
-      email: site.contact.email,
-      telephone: site.contact.phone,
+      contactType: 'customer service',
+      ...reach,
       availableLanguage: 'es',
       areaServed: site.country,
     },

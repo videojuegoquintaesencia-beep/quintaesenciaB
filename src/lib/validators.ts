@@ -89,14 +89,24 @@ export const addressSchema = z.object({
 })
 export type Address = z.infer<typeof addressSchema>
 
-export const customerSchema = z.object({
-  name: cleanText(100, 2, 'Nombre y apellidos'),
-  email: emailSchema,
-  phone: phoneSchema,
-  /** Empresa (opcional): si se rellena se mostrará en la hoja de producción y en la factura. */
-  company: z.string().trim().max(120, 'Máximo 120 caracteres').optional(),
-  taxId: taxIdSchema,
-})
+export const COMPANY_REQUIRED_MESSAGE = 'Escribe el nombre de la empresa para la factura.'
+export const TAX_ID_REQUIRED_MESSAGE = 'Escribe el NIF/CIF para la factura.'
+
+export const customerSchema = z
+  .object({
+    name: cleanText(100, 2, 'Nombre y apellidos'),
+    email: emailSchema,
+    phone: phoneSchema,
+    /** Empresa (opcional): si se rellena se mostrará en la hoja de producción y en la factura. */
+    company: z.string().trim().max(120, 'Máximo 120 caracteres').optional(),
+    taxId: taxIdSchema,
+  })
+  .superRefine((customer, ctx) => {
+    // Los datos de factura van juntos: con empresa sin NIF/CIF (o al revés) no se puede emitir la factura.
+    // El formulario solo envía estos campos si se marca "Compro como empresa", y entonces exige los dos.
+    if (customer.company && !customer.taxId) ctx.addIssue({ code: 'custom', path: ['taxId'], message: TAX_ID_REQUIRED_MESSAGE })
+    if (customer.taxId && !customer.company) ctx.addIssue({ code: 'custom', path: ['company'], message: COMPANY_REQUIRED_MESSAGE })
+  })
 export type Customer = z.infer<typeof customerSchema>
 
 /* ───────────── Contacto y presupuestos ───────────── */

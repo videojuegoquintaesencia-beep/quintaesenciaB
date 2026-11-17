@@ -88,7 +88,10 @@ export function SubmitButton({ submitting, children }: { submitting: boolean; ch
   )
 }
 
-/** Pantalla de éxito: recibe el foco al aparecer para que lectores de pantalla y teclado la encuentren. */
+/**
+ * Pantalla de éxito: recibe el foco al aparecer para que lectores de pantalla y teclado la encuentren.
+ * `scroll-mt` deja sitio a la cabecera fija: sin él, el foco la deja con el icono tapado.
+ */
 export function FormSuccess({
   title,
   number,
@@ -107,7 +110,7 @@ export function FormSuccess({
     ref.current?.focus()
   }, [])
   return (
-    <div ref={ref} tabIndex={-1} role="status" className="card bg-teal-soft p-6 text-center outline-none sm:p-10">
+    <div ref={ref} tabIndex={-1} role="status" className="card scroll-mt-28 bg-teal-soft p-6 text-center outline-none sm:p-10">
       <span aria-hidden="true" className="mx-auto flex size-16 items-center justify-center rounded-full border-2 border-ink bg-yellow shadow-pop">
         <CircleCheck className="size-8" strokeWidth={2.4} />
       </span>

@@ -5,6 +5,7 @@
 import 'server-only'
 import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, sendMail, type MailResult } from '../email'
+import { ENTITY_WORD } from './names'
 import { QUOTE_PRODUCT_LABELS, type QuoteProduct } from '../quote-form'
 import type { Quote } from '../quotes'
 
@@ -12,19 +13,19 @@ const MUTED = '#4a4270'
 const LINE = '#e9e3f5'
 
 /**
- * Nombre de pila para el saludo. Solo se usa si parece un nombre (letras, apóstrofo o guion): el formulario es
- * público y este email sale con el dominio de la tienda, así que no se reproduce texto libre de quien escribe.
+ * Nombre de pila para el saludo. Solo se usa si parece un nombre (letras, apóstrofo o guion) y no el de una entidad:
+ * el formulario es público y este email sale con el dominio de la tienda, así que no se reproduce texto libre.
  */
 const firstName = (quote: Quote) => {
   const first = quote.name.trim().split(/\s+/)[0] ?? ''
-  return /^[\p{L}][\p{L}'’-]{0,29}$/u.test(first) ? first : ''
+  return /^[\p{L}][\p{L}'’-]{0,29}$/u.test(first) && !ENTITY_WORD.test(first) ? first : ''
 }
 const greeting = (quote: Quote) => {
   const name = firstName(quote)
   return name ? `Hola ${name}` : 'Hola'
 }
 
-const productLabel = (id: string) => QUOTE_PRODUCT_LABELS[id as QuoteProduct]?.toLowerCase() ?? id
+const productLabel = (id: string) => (id === 'otro' ? 'otros productos' : (QUOTE_PRODUCT_LABELS[id as QuoteProduct]?.toLowerCase() ?? id))
 const productsText = (quote: Quote) => quote.products.map(productLabel).join(', ')
 
 /** "2026-12-01" → "1 de diciembre de 2026" (sin depender de la zona horaria del servidor). */

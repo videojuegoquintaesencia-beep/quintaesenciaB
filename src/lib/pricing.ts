@@ -117,7 +117,7 @@ export function priceLine(input: LineInput): LinePrice | PriceError {
   if (quantity > product.maxQtyPerLine)
     return {
       ok: false,
-      error: `Para más de ${product.maxQtyPerLine} unidades de este producto pídenos presupuesto.`,
+      error: `Para más de ${product.maxQtyPerLine} unidades de este diseño pídenos presupuesto.`,
     }
 
   const prints = printCharges(product, design)

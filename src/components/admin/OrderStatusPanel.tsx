@@ -82,6 +82,8 @@ export function OrderStatusPanel({
     setTarget(target === next ? null : next)
     setNotice(null)
     setWithoutTracking(false)
+    // Cada cambio de estado empieza avisando al cliente: desmarcarlo en un paso no debe arrastrarse al siguiente.
+    setNotify(true)
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -122,6 +124,7 @@ export function OrderStatusPanel({
     else setNotice({ kind: 'success', text: base })
     setTarget(null)
     setNote('')
+    setNotify(true)
     router.refresh()
   }
 

@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/Field'
+import { isValidEmail } from '@/lib/validators'
 import { postJson } from './api'
 
 export function TrackingForm() {
@@ -16,8 +17,8 @@ export function TrackingForm() {
   async function submit(e: FormEvent) {
     e.preventDefault()
     const found: typeof errors = {}
-    if (!/^\s*pu[-\s]?\d{4,9}\s*$/i.test(number)) found.number = 'Escribe el número de pedido, por ejemplo PU-1042.'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) found.email = 'Introduce el email que usaste al comprar.'
+    if (!/^\s*(?:pu[-\s]?)?\d{4,9}\s*$/i.test(number)) found.number = 'Escribe el número de pedido, por ejemplo PU-1042.'
+    if (!isValidEmail(email.trim().toLowerCase())) found.email = 'Introduce el email que usaste al comprar.'
     setErrors(found)
     setFormError(null)
     if (found.number || found.email) return

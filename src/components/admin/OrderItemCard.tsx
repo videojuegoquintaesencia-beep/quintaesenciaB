@@ -1,6 +1,6 @@
 import { Download, FileImage as FileImageIcon, MessageSquareText } from 'lucide-react'
-import { formatEUR } from '@/lib/format'
-import type { FileMeta } from '@/lib/files'
+import { formatEUR, formatNumber } from '@/lib/format'
+import type { FileMeta, PngSize } from '@/lib/files'
 import type { OrderItem } from '@/lib/orders'
 import { buildItemView, formatCm2, formatSizeCm, type PlacementView, type ViewGroup } from '@/lib/admin/order-view'
 import { FileImage } from './Thumb'
@@ -12,16 +12,30 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value, wrap }: { label: string; value: string; wrap?: boolean }) {
   return (
     <div>
       <dt className="text-xs font-extrabold uppercase tracking-wide text-ink-soft">{label}</dt>
-      <dd className="whitespace-nowrap font-bold tabular-nums">{value}</dd>
+      <dd className={wrap ? 'font-bold tabular-nums' : 'whitespace-nowrap font-bold tabular-nums'}>{value}</dd>
     </div>
   )
 }
 
-function Placement({ placement, itemLabel }: { placement: PlacementView; itemLabel: string }) {
+const CM_PER_INCH = 2.54
+
+/** "3.544 × 4.725 px · 300 ppp": píxeles del PNG y resolución real (px / tamaño del diseño en pulgadas). */
+function describePrintFile(png: PngSize | undefined, bboxCm: PlacementView['bboxCm']): string | null {
+  if (!png) return null
+  const px = `${formatNumber(png.width)} × ${formatNumber(png.height)} px`
+  const dpi = bboxCm && bboxCm.width > 0 ? Math.round(png.width / (bboxCm.width / CM_PER_INCH)) : png.dpi
+  const parts = [px]
+  if (dpi) parts.push(`${formatNumber(dpi)} ppp`)
+  if (png.dpi === null) parts.push('sin ppp anotados')
+  return parts.join(' · ')
+}
+
+function Placement({ placement, itemLabel, png }: { placement: PlacementView; itemLabel: string; png: PngSize | undefined }) {
+  const fileInfo = describePrintFile(png, placement.bboxCm)
   return (
     <li className="rounded-xl border-2 border-ink/20 bg-cream/60 p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -31,6 +45,7 @@ function Placement({ placement, itemLabel }: { placement: PlacementView; itemLab
             <Fact label="Diseño" value={formatSizeCm(placement.bboxCm)} />
             <Fact label="Superficie usada" value={formatCm2(placement.usedCm2)} />
             <Fact label="Zona máxima" value={formatSizeCm(placement.maxCm)} />
+            {fileInfo && <Fact label="Archivo de impresión" value={fileInfo} wrap />}
           </dl>
           {placement.layers.length > 0 && (
             <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-ink-soft">
@@ -70,7 +85,7 @@ function Placement({ placement, itemLabel }: { placement: PlacementView; itemLab
   )
 }
 
-function ViewBlock({ group, itemLabel }: { group: ViewGroup; itemLabel: string }) {
+function ViewBlock({ group, itemLabel, pngSizes }: { group: ViewGroup; itemLabel: string; pngSizes: Map<string, PngSize> }) {
   return (
     <div className="grid gap-4 sm:grid-cols-[11.5rem_minmax(0,1fr)]">
       <figure className="mx-auto w-full max-w-[14rem] sm:mx-0">
@@ -100,7 +115,7 @@ function ViewBlock({ group, itemLabel }: { group: ViewGroup; itemLabel: string }
       {group.placements.length > 0 ? (
         <ul className="space-y-3" aria-label={`Estampados: ${group.label}`}>
           {group.placements.map((p) => (
-            <Placement key={p.areaId} placement={p} itemLabel={itemLabel} />
+            <Placement key={p.areaId} placement={p} itemLabel={itemLabel} png={p.printFileId ? pngSizes.get(p.printFileId) : undefined} />
           ))}
         </ul>
       ) : (
@@ -111,7 +126,17 @@ function ViewBlock({ group, itemLabel }: { group: ViewGroup; itemLabel: string }
 }
 
 /** Una línea del pedido: qué se fabrica, en qué tallas, con qué estampados y los archivos para imprimir. */
-export function OrderItemCard({ item, index, files }: { item: OrderItem; index: number; files: Map<string, FileMeta> }) {
+export function OrderItemCard({
+  item,
+  index,
+  files,
+  pngSizes,
+}: {
+  item: OrderItem
+  index: number
+  files: Map<string, FileMeta>
+  pngSizes: Map<string, PngSize>
+}) {
   const view = buildItemView(item)
   const label = `${item.productName} ${item.colorName.toLowerCase()}`
   const artworks = view.artworkFileIds
@@ -155,7 +180,7 @@ export function OrderItemCard({ item, index, files }: { item: OrderItem; index: 
 
         <div className="space-y-5">
           {view.groups.map((group) => (
-            <ViewBlock key={group.viewId} group={group} itemLabel={label} />
+            <ViewBlock key={group.viewId} group={group} itemLabel={label} pngSizes={pngSizes} />
           ))}
           {view.groups.length === 0 && <p className="text-ink-soft">Esta línea no tiene estampados registrados.</p>}
         </div>
@@ -191,8 +216,8 @@ export function OrderItemCard({ item, index, files }: { item: OrderItem; index: 
         )}
 
         <p className="border-t-2 border-ink/10 pt-3 text-sm text-ink-soft">
-          Precio: {formatEUR(item.unitBaseCents)} la prenda
-          {item.prints.length > 0 && ` + ${formatEUR(item.printCents)} de estampado`} por unidad
+          Precio por unidad: {formatEUR(item.unitBaseCents)} del producto sin estampar
+          {item.prints.length > 0 && ` + ${formatEUR(item.printCents)} de estampado`}
           {item.sizeSurchargeCents > 0 && `, más ${formatEUR(item.sizeSurchargeCents)} de suplemento de talla`}.
         </p>
       </div>

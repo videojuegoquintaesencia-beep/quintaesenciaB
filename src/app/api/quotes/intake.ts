@@ -13,6 +13,8 @@ import { fieldErrors, firstZodError } from '@/lib/validators'
 
 const MAX_BODY_BYTES = 32 * 1024
 const MAX_ACKS_PER_RECIPIENT_PER_DAY = 3
+/** Envíos por hora entre TODAS las IP (por tipo de formulario): una red de seguridad que no depende de la IP. */
+const MAX_INTAKES_PER_HOUR_ALL_IPS = 100
 const NUMBER_PREFIX: Record<QuoteKind, string> = { quote: 'PR', contact: 'MS' }
 
 type Failure = { ok: false; error: string; errors?: Record<string, string> }
@@ -51,6 +53,16 @@ export async function handleIntake<T>(
         error: `Has enviado varios formularios seguidos. Inténtalo de nuevo en ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'} o escríbenos a ${site.contact.email}.`,
       },
       { 'Retry-After': String(limit.retryAfterSec) },
+    )
+  }
+
+  // Tope global: si TRUSTED_PROXY_HOPS estuviera mal definido, cambiar de "IP" no permite inundar la bandeja de avisos.
+  const allIps = rateLimit(`intake:${opts.kind}:all`, MAX_INTAKES_PER_HOUR_ALL_IPS, 60 * 60_000)
+  if (!allIps.ok) {
+    return fail(
+      429,
+      { ok: false, error: `Estamos recibiendo muchos envíos a la vez. Inténtalo de nuevo en un rato o escríbenos a ${site.contact.email}.` },
+      { 'Retry-After': String(allIps.retryAfterSec) },
     )
   }
 

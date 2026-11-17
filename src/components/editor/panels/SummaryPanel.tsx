@@ -35,12 +35,13 @@ export function Quantities() {
       <div>
         <Stepper
           label={product.namePlural.toLowerCase()}
+          unit={product.name.toLowerCase()}
           value={sizes[id] ?? 0}
           min={0}
           max={(sizes[id] ?? 0) + remaining}
           onChange={(n) => useEditor.getState().setQty(id, n)}
         />
-        <p className="field-hint">Máximo {product.maxQtyPerLine} unidades por pedido. Para más, pídenos presupuesto.</p>
+        <p className="field-hint">Máximo {product.maxQtyPerLine} unidades por diseño. Para más, pídenos presupuesto.</p>
       </div>
     )
   }
@@ -106,7 +107,7 @@ export function SummaryPanel() {
         </p>
         {next && (
           <p className="mt-1 rounded-xl border-2 border-ink bg-yellow-soft p-2.5 text-sm font-bold">
-            Con {next.minQty} unidades, {next.pct} % de descuento
+            Con {next.minQty} unidades, {next.pct}&nbsp;% de descuento
             {qty > 0 ? ` (te faltan ${next.minQty - qty})` : ''}.
           </p>
         )}
@@ -141,7 +142,7 @@ export function SummaryPanel() {
                   <Row label={`Suplemento de talla (${sizeSurchargeLines.join(', ')})`} value={formatEUR(price.sizeSurchargeCents)} />
                 )}
                 {price.discountCents > 0 && (
-                  <Row label={`Descuento por volumen (${price.discountPct} %)`} value={`−${formatEUR(price.discountCents)}`} />
+                  <Row label={`Descuento por volumen (${price.discountPct}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
                 )}
               </dl>
               <div className="mt-1 border-t-2 border-ink pt-1">
@@ -157,12 +158,20 @@ export function SummaryPanel() {
           </>
         ) : (
           <div className="rounded-2xl border-2 border-dashed border-ink bg-paper p-3.5 text-sm">
-            <p className="font-bold">{formatEUR(product.basePriceCents)} la prenda sin estampar</p>
+            <p className="font-bold">{formatEUR(product.basePriceCents)} por {product.name.toLowerCase()} sin estampar</p>
             <p className="mt-1 text-ink-soft">El estampado se suma según la superficie que ocupe tu diseño en cada zona.</p>
           </div>
         )}
       </Group>
 
+      <p className="mt-4 text-sm text-ink-soft">
+        Producto personalizado: no admite devolución por desistimiento. Garantía legal de 3 años.{' '}
+        <Link href="/legal/condiciones#desistimiento" target="_blank" rel="noopener" className="font-bold text-violet-deep underline">
+          Condiciones de venta
+          <span className="sr-only"> (se abre en una pestaña nueva)</span>
+        </Link>
+        .
+      </p>
     </div>
   )
 }

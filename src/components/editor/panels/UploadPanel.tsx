@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { ImagePlus, LoaderCircle, TriangleAlert, X } from 'lucide-react'
 import { site } from '@/config/site'
@@ -27,7 +28,7 @@ const TIPS = [
   },
   {
     title: 'Evita letras muy pequeñas',
-    body: 'Los textos y trazos muy finos pierden detalle en la tela. Intenta que las letras midan más de 1 cm de alto.',
+    body: 'Los textos y trazos muy finos pierden detalle en la tela. Intenta que las letras midan más de 5 mm de alto.',
   },
 ]
 
@@ -96,7 +97,7 @@ export function UploadPanel({ images }: { images: ImageMap }) {
             <li key={p.key} className="flex items-center gap-2 rounded-xl border-2 border-ink bg-paper p-2.5 text-sm">
               <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
               <span className="min-w-0 flex-1 truncate font-bold">Subiendo {p.name}…</span>
-              <span className="tabular-nums text-ink-soft">{Math.round(p.progress * 100)} %</span>
+              <span className="tabular-nums text-ink-soft">{Math.round(p.progress * 100)}&nbsp;%</span>
             </li>
           ))}
         </ul>
@@ -155,6 +156,15 @@ export function UploadPanel({ images }: { images: ImageMap }) {
         />
         <p className="text-sm text-ink-soft">PNG, JPG, WebP o SVG · hasta {maxMb} MB</p>
       </div>
+      <p className="mt-3 text-sm text-ink-soft">
+        Sube solo imágenes propias o con permiso para usarlas. No imprimimos marcas ni personajes protegidos, ni contenido ilegal u
+        ofensivo. Más información en las{' '}
+        <Link href="/legal/condiciones#revision" target="_blank" rel="noopener" className="font-bold text-violet-deep underline">
+          condiciones de venta
+          <span className="sr-only"> (se abre en una pestaña nueva)</span>
+        </Link>
+        .
+      </p>
 
       {selectedLayer && (
         <Group title="Calidad de la imagen seleccionada" className="mt-5">

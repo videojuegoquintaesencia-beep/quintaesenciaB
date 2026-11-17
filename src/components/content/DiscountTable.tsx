@@ -21,7 +21,7 @@ export function DiscountTable() {
           {rows.map((r, i) => (
             <tr key={r.range} className={i < rows.length - 1 ? 'border-b border-ink/25' : undefined}>
               <th scope="row" className="p-3.5 font-bold">{r.range}</th>
-              <td className="p-3.5 text-right font-display text-xl font-semibold">{r.pct === 0 ? 'Sin descuento' : `${r.pct} %`}</td>
+              <td className="p-3.5 text-right font-display text-xl font-semibold">{r.pct === 0 ? 'Sin descuento' : `${r.pct}\u00a0%`}</td>
             </tr>
           ))}
         </tbody>

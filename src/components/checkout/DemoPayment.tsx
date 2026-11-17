@@ -34,7 +34,7 @@ export function DemoPayment({ bridge }: { bridge: PaymentBridge }) {
         </span>
       </p>
       <Button variant="secondary" size="lg" block className="mt-4" onClick={pay} disabled={bridge.processing}>
-        {bridge.processing ? 'Procesando…' : 'Pagar (modo demostración)'}
+        {bridge.processing ? 'Procesando…' : 'Pedido con obligación de pago (modo demostración)'}
       </Button>
     </div>
   )

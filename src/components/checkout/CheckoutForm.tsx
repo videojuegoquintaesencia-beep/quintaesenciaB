@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { site } from '@/config/site'
+import { LegalValue } from '@/components/content/LegalValue'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/Field'
 import { DELIVERABLE_PROVINCES } from '@/lib/es-provinces'
 import { isUndeliverablePostalCode, type FormErrors, type FormValues } from './form-state'
@@ -136,6 +137,7 @@ export function CheckoutForm({
               label="Empresa"
               name="organization"
               autoComplete="organization"
+              required
               value={values.company}
               error={errors.company}
               onChange={(e) => onChange('company', e.target.value)}
@@ -144,11 +146,16 @@ export function CheckoutForm({
               label="NIF / CIF"
               name="taxId"
               autoComplete="off"
+              required
               value={values.taxId}
               error={errors.taxId}
               hint="Por ejemplo B12345678 o 12345678Z."
               onChange={(e) => onChange('taxId', e.target.value.toUpperCase())}
             />
+            <p className="field-hint sm:col-span-2">
+              Emitimos la factura con estos datos y con la dirección de envío como domicilio. Si el domicilio fiscal es otro, indícalo en
+              la nota del pedido.
+            </p>
           </>
         )}
       </Section>
@@ -190,7 +197,6 @@ export function CheckoutForm({
             name="postalCode"
             autoComplete="shipping postal-code"
             inputMode="numeric"
-            maxLength={5}
             required
             value={values.postalCode}
             error={postalError}
@@ -256,15 +262,21 @@ export function CheckoutForm({
             He leído y acepto las <ExternalLink href="/legal/condiciones">condiciones de venta</ExternalLink>.
           </Consent>
           <Consent id="privacy" checked={values.privacy} error={errors.privacy} onChange={(c) => onChange('privacy', c)}>
-            Acepto el tratamiento de mis datos según la{' '}
-            <ExternalLink href="/legal/privacidad">política de privacidad</ExternalLink>.
+            He leído la <ExternalLink href="/legal/privacidad">política de privacidad</ExternalLink>.
           </Consent>
           <Consent id="noWithdrawal" checked={values.noWithdrawal} error={errors.noWithdrawal} onChange={(c) => onChange('noWithdrawal', c)}>
-            Entiendo que los productos personalizados no admiten desistimiento, salvo defecto.
+            Entiendo que, al ser productos personalizados, no tienen derecho de desistimiento de 14 días (art. 103.c de la Ley General
+            para la Defensa de los Consumidores y Usuarios). Mantengo mis derechos de garantía por defectos.
           </Consent>
           <Consent id="artworkRights" checked={values.artworkRights} error={errors.artworkRights} onChange={(c) => onChange('artworkRights', c)}>
-            Tengo derecho a usar los diseños, textos e imágenes que he subido.
+            Tengo derecho a usar los diseños, textos e imágenes que he subido y no incumplen los{' '}
+            <ExternalLink href="/legal/condiciones#revision">contenidos que no imprimimos</ExternalLink>.
           </Consent>
+          <p className="text-sm text-ink-soft">
+            <strong>Información básica sobre protección de datos:</strong> el responsable es <LegalValue>{site.business.legalName}</LegalValue>.
+            Usamos tus datos para gestionar tu pedido. Puedes ejercer tus derechos escribiendo a {site.contact.email}. Más información en la{' '}
+            <ExternalLink href="/legal/privacidad">política de privacidad</ExternalLink>.
+          </p>
         </div>
       </section>
     </div>

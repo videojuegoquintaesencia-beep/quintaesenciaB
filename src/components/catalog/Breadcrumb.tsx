@@ -18,7 +18,7 @@ export function Breadcrumb({ items }: { items: Crumb[] }) {
           {items.map((item, i) => (
             <li key={item.label} className="inline-flex items-center gap-1.5">
               {item.href ? (
-                <Link href={item.href} className="rounded-md py-1 underline-offset-4 hover:text-ink hover:underline">
+                <Link href={item.href} className="inline-flex items-center rounded-md py-1 underline-offset-4 hover:text-ink hover:underline pointer-coarse:min-h-11">
                   {item.label}
                 </Link>
               ) : (
@@ -39,7 +39,7 @@ export function Breadcrumb({ items }: { items: Crumb[] }) {
             '@type': 'ListItem',
             position: i + 1,
             name: item.label,
-            item: item.href ? `${site.url}${item.href}` : undefined,
+            item: item.href ? `${site.url}${item.href === '/' ? '' : item.href}` : undefined,
           })),
         }}
       />

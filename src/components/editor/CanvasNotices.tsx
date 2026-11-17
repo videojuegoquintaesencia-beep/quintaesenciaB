@@ -57,13 +57,23 @@ export function EmptyCanvasHint() {
   const empty = useEditor((s) => (s.design.areas[s.areaId]?.layers.length ?? 0) === 0)
   if (!empty) return null
   const go = (tab: 'subir' | 'texto' | 'pegatinas') => useEditor.getState().setTab(tab)
+  // El ancho disponible es el del lienzo (no el de la pantalla): con poco sitio se quitan el rótulo y los iconos.
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2">
-      <div className="pointer-events-auto flex items-center justify-center gap-1.5 rounded-2xl border-2 border-ink bg-paper/95 px-2 py-1.5 shadow-pop-sm">
-        <span className="hidden text-sm font-bold sm:inline">Empieza por aquí:</span>
-        <button type="button" onClick={() => go('subir')} className="btn btn-sm btn-secondary !min-h-10 !px-3"><ImagePlus aria-hidden="true" className="size-4" />Imagen</button>
-        <button type="button" onClick={() => go('texto')} className="btn btn-sm btn-teal !min-h-10 !px-3"><Type aria-hidden="true" className="size-4" />Texto</button>
-        <button type="button" onClick={() => go('pegatinas')} className="btn btn-sm !min-h-10 !px-3"><Smile aria-hidden="true" className="size-4" />Pegatinas</button>
+    <div className="@container pointer-events-none absolute inset-x-0 bottom-2 flex justify-center px-2">
+      <div className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-ink bg-paper/95 px-2 py-1.5 shadow-pop-sm">
+        <span className="hidden text-sm font-bold @lg:inline">Empieza por aquí:</span>
+        <button type="button" onClick={() => go('subir')} className="btn btn-sm btn-secondary !min-h-10 !px-2 @[22rem]:!px-3">
+          <ImagePlus aria-hidden="true" className="hidden size-4 @[22rem]:block" />
+          Imagen
+        </button>
+        <button type="button" onClick={() => go('texto')} className="btn btn-sm btn-teal !min-h-10 !px-2 @[22rem]:!px-3">
+          <Type aria-hidden="true" className="hidden size-4 @[22rem]:block" />
+          Texto
+        </button>
+        <button type="button" onClick={() => go('pegatinas')} className="btn btn-sm !min-h-10 !px-2 @[22rem]:!px-3">
+          <Smile aria-hidden="true" className="hidden size-4 @[22rem]:block" />
+          Pegatinas
+        </button>
       </div>
     </div>
   )

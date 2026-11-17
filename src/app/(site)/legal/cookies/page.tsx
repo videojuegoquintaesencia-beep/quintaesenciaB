@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { LegalPage, type LegalSection } from '@/components/content/LegalPage'
 import { LegalFacts } from '@/components/content/LegalValue'
 import { pageMetadata } from '@/components/content/metadata'
@@ -8,20 +9,20 @@ import { ADMIN_COOKIE, ADMIN_SESSION_SECONDS } from '@/lib/auth-token'
 export const metadata: Metadata = pageMetadata({
   title: 'Política de cookies',
   description:
-    'Qué almacenamos en tu navegador (carrito, borrador de diseño y PayPal en el pago), para qué sirve y cómo borrarlo. No usamos cookies de analítica ni de publicidad.',
+    'Qué guardamos en tu navegador (carrito, borrador de diseño y PayPal al pagar), para qué sirve y cómo borrarlo. Sin cookies de analítica ni de publicidad.',
   path: '/legal/cookies',
 })
 
 const adminHours = Math.round(ADMIN_SESSION_SECONDS / 3600)
 
-const ENTRIES: { title: string; rows: { label: string; value: string }[] }[] = [
+const ENTRIES: { title: string; rows: { label: string; value: ReactNode }[] }[] = [
   {
     title: 'Carrito de la compra',
     rows: [
       { label: 'Nombre', value: 'pieza-unica-cart-v1' },
       { label: 'Tipo', value: 'Almacenamiento local del navegador (localStorage), propio y técnico.' },
       { label: 'Para qué sirve', value: 'Recordar lo que has añadido al carrito, para que no lo pierdas si cierras la pestaña.' },
-      { label: 'Duración', value: 'Hasta que vacíes el carrito, hagas el pedido o borres los datos del navegador.' },
+      { label: 'Duración', value: 'Hasta que borres los datos del navegador; se vacía al hacer el pedido.' },
     ],
   },
   {
@@ -51,7 +52,18 @@ const ENTRIES: { title: string; rows: { label: string; value: string }[] }[] = [
         label: 'Para qué sirve',
         value: 'Mostrar los botones de pago, procesar el pago de forma segura y prevenir el fraude. Se cargan cuando llegas a la pantalla de pago.',
       },
-      { label: 'Duración', value: 'La que establezca PayPal en su política de cookies.' },
+      {
+        label: 'Duración',
+        value: (
+          <>
+            La indicada en la{' '}
+            <a href="https://www.paypal.com/es/webapps/mpp/ua/cookie-full" target="_blank" rel="noopener noreferrer">
+              política de cookies de PayPal<span className="sr-only"> (se abre en una pestaña nueva)</span>
+            </a>
+            .
+          </>
+        ),
+      },
     ],
   },
 ]

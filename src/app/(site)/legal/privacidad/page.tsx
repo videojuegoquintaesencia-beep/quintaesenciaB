@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage, type LegalSection } from '@/components/content/LegalPage'
-import { LegalFacts, OwnerFacts } from '@/components/content/LegalValue'
+import { LegalFacts, LegalValue, OwnerFacts } from '@/components/content/LegalValue'
 import { pageMetadata } from '@/components/content/metadata'
 import { site } from '@/config/site'
 
@@ -122,11 +122,22 @@ const SECTIONS: LegalSection[] = [
       <>
         <p>No cedemos tus datos a terceros salvo obligación legal. Para prestarte el servicio contamos con proveedores que los tratan por nuestra cuenta y con las garantías que exige el RGPD:</p>
         <ul>
-          <li><strong>PayPal:</strong> procesa el pago de tu pedido.</li>
           <li><strong>Empresas de mensajería:</strong> reciben tu nombre, dirección y teléfono (y email, si el transportista lo pide) para entregarte el pedido.</li>
           <li><strong>Proveedor de alojamiento y base de datos:</strong> almacena la web y la información de pedidos y formularios.</li>
           <li><strong>Proveedor de correo electrónico:</strong> envía las confirmaciones y los avisos de tu pedido o de tu consulta.</li>
-          <li><strong>Administraciones públicas y asesoría fiscal y contable:</strong> cuando la ley lo exige o para cumplir nuestras obligaciones tributarias.</li>
+          <li><strong>Asesoría fiscal y contable:</strong> para cumplir nuestras obligaciones tributarias.</li>
+        </ul>
+        <p>Otras empresas tratan tus datos por su cuenta, como responsables independientes, según sus propias políticas de privacidad:</p>
+        <ul>
+          <li>
+            <strong>PayPal:</strong> gestiona el pago como responsable independiente de los datos de pago, conforme a su política de
+            privacidad. Nosotros solo recibimos la confirmación del cobro.
+          </li>
+          <li>
+            <strong>WhatsApp (Meta):</strong> si nos escribes por WhatsApp, tu número y tus mensajes los trata también WhatsApp según su
+            política.
+          </li>
+          <li><strong>Administraciones públicas:</strong> cuando la ley nos obliga a comunicarles datos.</li>
         </ul>
       </>
     ),
@@ -136,9 +147,10 @@ const SECTIONS: LegalSection[] = [
     title: 'Transferencias internacionales',
     content: (
       <p>
-        Si algún proveedor trata datos fuera del Espacio Económico Europeo, lo hacemos con las garantías que exige el RGPD, como una
-        decisión de adecuación de la Comisión Europea o las cláusulas contractuales tipo. PayPal trata los datos de pago conforme a
-        su propia política de privacidad.
+        Nuestros proveedores de alojamiento, base de datos y correo son: <LegalValue>{site.business.processors}</LegalValue>. Cuando
+        almacenan o tratan datos fuera del Espacio Económico Europeo, lo hacen con las garantías que exige el RGPD: una decisión de
+        adecuación de la Comisión Europea o las cláusulas contractuales tipo. PayPal y WhatsApp (Meta) pueden tratar datos fuera del
+        Espacio Económico Europeo conforme a sus propias políticas de privacidad.
       </p>
     ),
   },
@@ -158,6 +170,11 @@ const SECTIONS: LegalSection[] = [
         <li>
           <strong>Pedidos que no llegan a pagarse:</strong> se eliminan, con sus archivos, transcurridos {site.uploads.unpaidOrderRetentionDays}{' '}
           días.
+        </li>
+        <li>
+          <strong>Constancia de lo que aceptas al pedir:</strong> guardamos en el historial del pedido que has aceptado las condiciones
+          de venta, la ausencia de desistimiento en productos personalizados y la declaración sobre los derechos de tu diseño, y que has
+          leído esta política, durante el mismo plazo que el pedido.
         </li>
         <li>
           <strong>Archivos subidos que no llegan a un pedido o a un presupuesto:</strong> se borran de forma automática transcurridos{' '}

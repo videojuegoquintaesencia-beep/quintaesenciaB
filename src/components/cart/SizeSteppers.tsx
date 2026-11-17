@@ -1,6 +1,7 @@
 'use client'
 import { Minus, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { isSingleSize, type Product } from '@/config/products'
 import { cn } from '@/lib/cn'
 import { totalQuantity } from '@/lib/pricing'
@@ -8,6 +9,7 @@ import { totalQuantity } from '@/lib/pricing'
 function Stepper({
   label,
   value,
+  max,
   onChange,
   canDecrease,
   canIncrease,
@@ -16,32 +18,65 @@ function Stepper({
 }: {
   label: string
   value: number
+  /** Máximo que admite este campo (el tope de la línea menos lo que ya suman las otras tallas). */
+  max: number
   onChange: (next: number) => void
   canDecrease: boolean
   canIncrease: boolean
   large?: boolean
   left?: boolean
 }) {
+  // Mientras se escribe se muestra el texto en edición (puede quedar vacío para teclear otro número);
+  // al salir del campo vuelve a verse el valor real de la línea, que nunca baja de 1 unidad en total.
+  const [draft, setDraft] = useState<string | null>(null)
   const btn =
     'flex size-9 shrink-0 items-center pointer-coarse:size-11 justify-center rounded-full border-2 border-ink bg-paper text-ink transition-colors hover:bg-yellow-soft disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-paper'
   return (
     <div className={cn('flex items-center gap-1.5', left ? 'justify-start' : 'justify-center')}>
-      <button type="button" className={btn} onClick={() => onChange(value - 1)} disabled={!canDecrease} aria-label={`Quitar una unidad, ${label}`}>
+      <button
+        type="button"
+        className={btn}
+        onClick={() => {
+          setDraft(null)
+          onChange(value - 1)
+        }}
+        disabled={!canDecrease}
+        aria-label={`Quitar una unidad, ${label}`}
+      >
         <Minus size={16} aria-hidden="true" />
       </button>
       <input
         type="number"
         inputMode="numeric"
         min={0}
-        value={value}
-        onChange={(e) => onChange(Math.floor(Number(e.target.value) || 0))}
+        value={draft ?? value}
+        onChange={(e) => {
+          const raw = e.target.value
+          if (raw === '') {
+            setDraft('')
+            return
+          }
+          const qty = Math.min(Math.max(Math.floor(Number(raw) || 0), 0), max)
+          setDraft(String(qty))
+          onChange(qty)
+        }}
+        onBlur={() => setDraft(null)}
         aria-label={`Unidades, ${label}`}
         className={cn(
           'h-9 rounded-xl border-2 border-ink bg-paper text-center pointer-coarse:h-11 font-display font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
           large ? 'w-16 text-lg' : 'w-11',
         )}
       />
-      <button type="button" className={btn} onClick={() => onChange(value + 1)} disabled={!canIncrease} aria-label={`Añadir una unidad, ${label}`}>
+      <button
+        type="button"
+        className={btn}
+        onClick={() => {
+          setDraft(null)
+          onChange(value + 1)
+        }}
+        disabled={!canIncrease}
+        aria-label={`Añadir una unidad, ${label}`}
+      >
         <Plus size={16} aria-hidden="true" />
       </button>
     </div>
@@ -81,6 +116,7 @@ export function SizeSteppers({
           left
           label={product.name}
           value={sizes[id] ?? 0}
+          max={product.maxQtyPerLine}
           onChange={(n) => set(id, n)}
           canDecrease={total > 1}
           canIncrease={!atMax}
@@ -101,6 +137,7 @@ export function SizeSteppers({
               <Stepper
                 label={`talla ${s.label}`}
                 value={qty}
+                max={product.maxQtyPerLine - (total - qty)}
                 onChange={(n) => set(s.id, n)}
                 canDecrease={qty > 0 && total > 1}
                 canIncrease={!atMax}

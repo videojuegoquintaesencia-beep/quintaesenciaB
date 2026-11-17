@@ -43,8 +43,9 @@ export const ORDER_STATUS_CUSTOMER_TEXT: Record<OrderStatus, string> = {
   ready: 'Tu pedido está terminado y lo estamos empaquetando para enviarlo.',
   shipped: 'Tu pedido está en camino.',
   delivered: 'Tu pedido ha sido entregado. ¡Esperamos que te encante!',
-  cancelled: 'Este pedido ha sido cancelado.',
-  refunded: 'Hemos reembolsado el importe de este pedido.',
+  cancelled:
+    'Hemos cancelado este pedido. Si ya habías pagado, te devolvemos el importe íntegro por el mismo medio de pago (PayPal) en un máximo de 14 días naturales.',
+  refunded: 'Hemos reembolsado el importe de este pedido. PayPal puede tardar unos días en reflejarlo.',
 }
 
 /** Transiciones que el panel de administración permite desde cada estado. */
@@ -73,6 +74,14 @@ export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
   lost: 'Perdido',
   archived: 'Archivado',
 }
+/** Estados que tienen sentido en un mensaje de contacto (una consulta no se presupuesta, ni se gana ni se pierde). */
+export const CONTACT_STATUSES: readonly QuoteStatus[] = ['new', 'contacted', 'archived']
+
+/** Estados que puede tener cada tipo de solicitud: los presupuestos, todos; los mensajes, solo los de consulta. */
+export function statusesForKind(kind: 'quote' | 'contact'): readonly QuoteStatus[] {
+  return kind === 'contact' ? CONTACT_STATUSES : QUOTE_STATUSES
+}
+
 export const QUOTE_STATUS_TONE: Record<QuoteStatus, StatusTone> = {
   new: 'warning',
   contacted: 'info',

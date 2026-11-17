@@ -17,7 +17,8 @@ function social(value: string, base: string): string {
 
 /** Enlaces de contacto con datos reales de `site.contact`; los campos vacíos se omiten. */
 export function contactLinks(): ContactLink[] {
-  const c = site.contact
+  // `site` es `as const`: se ensancha a string para que los datos que el dueño deje vacíos se oculten.
+  const c: Record<keyof typeof site.contact, string> = site.contact
   const out: ContactLink[] = []
   if (c.email) out.push({ key: 'email', label: 'Correo', text: c.email, href: `mailto:${c.email}` })
   if (c.phone) out.push({ key: 'phone', label: 'Teléfono', text: c.phone, href: `tel:${c.phone.replace(/[^\d+]/g, '')}` })
@@ -32,7 +33,8 @@ export function contactLinks(): ContactLink[] {
 
 /** Enlace wa.me con un mensaje inicial (vacío si no hay WhatsApp configurado). */
 export function whatsappUrl(message = 'Hola, quería información sobre un pedido personalizado.'): string {
-  const number = site.contact.whatsapp.replace(/\D/g, '')
+  const whatsapp: string = site.contact.whatsapp
+  const number = whatsapp.replace(/\D/g, '')
   if (!number) return ''
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }

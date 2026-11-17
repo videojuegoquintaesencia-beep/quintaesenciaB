@@ -6,7 +6,7 @@ import 'server-only'
 import { site } from '@/config/site'
 import { getDb, nowIso } from './db'
 import { MAX_PRINT_PIXELS } from './editor/constants'
-import { inspectRaster, readPngHeader } from './image-info'
+import { inspectRaster, readPngDpi, readPngHeader } from './image-info'
 import { newId } from './ids'
 import { checkSvg } from './svg-safety'
 
@@ -139,22 +139,30 @@ export async function getFileMetas(ids: string[]): Promise<FileMeta[]> {
   }))
 }
 
+export interface PngSize {
+  width: number
+  height: number
+  /** Resolución anotada en el PNG (chunk pHYs), si la lleva. */
+  dpi: number | null
+}
+
 /**
- * Dimensiones (px) de archivos PNG ya guardados, leídas de su cabecera IHDR sin cargar el archivo entero.
- * Los ids que no existen o no son PNG no aparecen en el resultado.
+ * Dimensiones (px) y resolución (ppp) de archivos PNG ya guardados, leídas del comienzo del archivo sin cargarlo
+ * entero. Los ids que no existen o no son PNG no aparecen en el resultado.
  */
-export async function getPngSizes(ids: string[]): Promise<Map<string, { width: number; height: number }>> {
-  const out = new Map<string, { width: number; height: number }>()
+export async function getPngSizes(ids: string[]): Promise<Map<string, PngSize>> {
+  const out = new Map<string, PngSize>()
   if (ids.length === 0) return out
   const db = await getDb()
   const marks = ids.map(() => '?').join(',')
   const res = await db.execute({
-    sql: `SELECT id, substr(data, 1, 33) AS head FROM files WHERE mime = 'image/png' AND id IN (${marks})`,
+    sql: `SELECT id, substr(data, 1, 96) AS head FROM files WHERE mime = 'image/png' AND id IN (${marks})`,
     args: ids,
   })
   for (const r of res.rows) {
-    const size = readPngHeader(toBytes(r.head))
-    if (size) out.set(String(r.id), size)
+    const head = toBytes(r.head)
+    const size = readPngHeader(head)
+    if (size) out.set(String(r.id), { ...size, dpi: readPngDpi(head) })
   }
   return out
 }

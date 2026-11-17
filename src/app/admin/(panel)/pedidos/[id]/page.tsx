@@ -13,7 +13,7 @@ import { Panel } from '@/components/admin/Panel'
 import { OrderStatusBadge } from '@/components/admin/StatusBadges'
 import { TrackingForm } from '@/components/admin/TrackingForm'
 import { ButtonLink } from '@/components/ui/Button'
-import { getFileMetas } from '@/lib/files'
+import { getFileMetas, getPngSizes } from '@/lib/files'
 import { unidades } from '@/lib/format'
 import { isValidId } from '@/lib/ids'
 import { ORDER_STATUS_TRANSITIONS } from '@/lib/order-status'
@@ -35,7 +35,9 @@ export default async function OrderDetailPage({ params }: Props) {
   const order = await loadOrder(id)
   if (!order) notFound()
 
-  const files = new Map((await getFileMetas(orderFileIds(order))).map((f) => [f.id, f]))
+  const fileIds = orderFileIds(order)
+  const files = new Map((await getFileMetas(fileIds)).map((f) => [f.id, f]))
+  const pngSizes = await getPngSizes(order.items.flatMap((i) => Object.values(i.printFiles)))
   const units = order.items.reduce((n, i) => n + i.quantity, 0)
   const showTracking = order.status === 'shipped' || order.status === 'delivered'
 
@@ -95,7 +97,7 @@ export default async function OrderDetailPage({ params }: Props) {
               Artículos <span className="font-body text-lg text-ink-soft">({order.items.length})</span>
             </h2>
             {order.items.map((item, i) => (
-              <OrderItemCard key={item.lineId} item={item} index={i} files={files} />
+              <OrderItemCard key={item.lineId} item={item} index={i} files={files} pngSizes={pngSizes} />
             ))}
           </section>
           <div className="max-lg:order-7">

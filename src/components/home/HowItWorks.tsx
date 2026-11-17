@@ -22,7 +22,7 @@ export function HowItWorks() {
     {
       icon: Package,
       title: 'Lo recibes en casa',
-      text: `Lo enviamos por ${shipping.carrierLabel} a toda España, salvo ${shipping.excludedZonesLabel}. El envío es gratis desde ${formatEUR(shipping.freeFromCents, { compact: true })}.`,
+      text: `Lo enviamos por ${shipping.carrierLabel} a ${shipping.deliveryZonesLabel}. El envío es gratis desde ${formatEUR(shipping.freeFromCents, { compact: true })}.`,
       color: 'bg-teal',
     },
   ]
