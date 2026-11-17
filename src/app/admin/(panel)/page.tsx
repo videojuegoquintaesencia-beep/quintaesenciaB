@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { QuotesList } from '@/components/admin/QuotesList'
 import { StatCard } from '@/components/admin/StatCard'
 import { formatEUR } from '@/lib/format'
+import { requireAdmin } from '@/lib/auth'
 import { ORDER_STATUS_LABEL, type OrderStatus } from '@/lib/order-status'
 import { getOrderStats, listOrders } from '@/lib/orders'
 import { countNewQuotes, listQuotes } from '@/lib/quotes'
@@ -23,6 +24,7 @@ const ACTION_GROUPS: { status: OrderStatus; title: string; hint: string }[] = [
 const GROUP_LIMIT = 8
 
 export default async function AdminDashboardPage() {
+  await requireAdmin()
   const [stats, newQuotes, quotes, ...groups] = await Promise.all([
     getOrderStats(),
     countNewQuotes(),

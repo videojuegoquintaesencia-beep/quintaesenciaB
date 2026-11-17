@@ -7,11 +7,12 @@ import Konva from 'konva'
 import { mockupDataUrl } from '@/components/mockups'
 import { getArea, getColor, getProduct, getView, type PrintArea, type Product, type ProductView } from '@/config/products'
 import { areaUsage, designArtworkFileIds, type Design } from '@/lib/design'
-import { MAX_PRINT_PIXELS, MIN_PRINT_DPI, PREVIEW_WIDTH_PX, PRINT_DPI } from './constants'
+import { PREVIEW_WIDTH_PX } from './constants'
 import { CM_PER_INCH, round1 } from './geometry'
 import { loadFileImage, type LoadedImage } from './images'
 import { ensureFont } from './fonts'
 import { buildLayerNode } from './nodes'
+import { printRenderSize } from '@/lib/print-file'
 import { uploadFile } from './upload'
 
 type ImageMap = Map<string, LoadedImage>
@@ -90,13 +91,9 @@ export async function renderPrintFile(
   const wCm = bbox.x1 - bbox.x0
   const hCm = bbox.y1 - bbox.y0
 
-  let dpi = PRINT_DPI
-  if (wCm * hCm * (dpi / CM_PER_INCH) ** 2 > MAX_PRINT_PIXELS) {
-    dpi = Math.max(MIN_PRINT_DPI, Math.floor(CM_PER_INCH * Math.sqrt(MAX_PRINT_PIXELS / (wCm * hCm))))
-  }
+  // El servidor comprueba con la misma función que el PNG subido coincide con la superficie cobrada.
+  const { dpi, widthPx, heightPx } = printRenderSize(wCm, hCm)
   const ppc = dpi / CM_PER_INCH
-  const widthPx = Math.max(1, Math.ceil(wCm * ppc))
-  const heightPx = Math.max(1, Math.ceil(hCm * ppc))
 
   const root = new Konva.Group()
   const holder = new Konva.Group({ x: -bbox.x0 * ppc, y: -bbox.y0 * ppc })

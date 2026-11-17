@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import '@/lib/zod-es'
 import { readJsonBody } from '@/lib/checkout'
 import { findOrderByNumberAndEmail } from '@/lib/orders'
 import { clientIp, rateLimit } from '@/lib/rate-limit'

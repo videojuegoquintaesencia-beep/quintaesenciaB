@@ -16,7 +16,7 @@ function LogoutForm({ className, children }: { className: string; children: Reac
 
 function Brand() {
   return (
-    <Link href="/admin" className="inline-flex flex-col leading-none no-underline" aria-label={`${site.name}: panel de gestión`}>
+    <Link href="/admin" className="inline-flex flex-col leading-none no-underline">
       <span className="font-display text-xl font-semibold">{site.name}</span>
       <span className="mt-1 text-xs font-extrabold uppercase tracking-wider text-ink-soft">Panel de gestión</span>
     </Link>

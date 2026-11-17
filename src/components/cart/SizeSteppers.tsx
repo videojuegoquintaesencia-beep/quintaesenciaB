@@ -23,7 +23,7 @@ function Stepper({
   left?: boolean
 }) {
   const btn =
-    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-paper text-ink transition-colors hover:bg-yellow-soft disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-paper'
+    'flex size-9 shrink-0 items-center pointer-coarse:size-11 justify-center rounded-full border-2 border-ink bg-paper text-ink transition-colors hover:bg-yellow-soft disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-paper'
   return (
     <div className={cn('flex items-center gap-1.5', left ? 'justify-start' : 'justify-center')}>
       <button type="button" className={btn} onClick={() => onChange(value - 1)} disabled={!canDecrease} aria-label={`Quitar una unidad, ${label}`}>
@@ -37,7 +37,7 @@ function Stepper({
         onChange={(e) => onChange(Math.floor(Number(e.target.value) || 0))}
         aria-label={`Unidades, ${label}`}
         className={cn(
-          'h-9 rounded-xl border-2 border-ink bg-paper text-center font-display font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+          'h-9 rounded-xl border-2 border-ink bg-paper text-center pointer-coarse:h-11 font-display font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
           large ? 'w-16 text-lg' : 'w-11',
         )}
       />
@@ -92,7 +92,7 @@ export function SizeSteppers({
 
   return (
     <div>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:grid-cols-3">
         {product.sizes.map((s) => {
           const qty = sizes[s.id] ?? 0
           return (

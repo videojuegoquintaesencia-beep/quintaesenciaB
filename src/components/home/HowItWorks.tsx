@@ -48,7 +48,7 @@ export function HowItWorks() {
         ))}
       </ol>
       <p className="mt-8">
-        <Link href="/como-funciona" className="inline-flex items-center gap-1.5 font-bold text-violet-deep underline underline-offset-4">
+        <Link href="/como-funciona" className="inline-flex min-h-11 items-center gap-1.5 font-bold text-violet-deep underline underline-offset-4">
           Ver el proceso con más detalle <ArrowRight aria-hidden="true" size={16} />
         </Link>
       </p>

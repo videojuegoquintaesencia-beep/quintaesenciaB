@@ -17,7 +17,7 @@ export function StudioHeader() {
   const count = mounted ? units : 0
   return (
     <header className="flex h-12 shrink-0 sm:h-14 items-center gap-2 border-b-2 border-ink bg-paper px-3 sm:gap-4 sm:px-5">
-      <Link href="/" className="rounded-xl font-display text-xl font-bold leading-none tracking-tight sm:text-2xl">
+      <Link href="/" className="inline-flex min-h-11 items-center rounded-xl font-display text-xl font-bold leading-none tracking-tight sm:text-2xl">
         {site.name}
       </Link>
       <Link

@@ -86,6 +86,21 @@ const SCHEMA = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status)`,
   `CREATE INDEX IF NOT EXISTS idx_quotes_created ON quotes(created_at)`,
+
+  // Intentos de acceso al panel (límite por IP y global, compartido entre instancias).
+  `CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_login_attempts_at ON login_attempts(created_at)`,
+
+  // Pequeños valores de estado del panel (p. ej. "las sesiones anteriores a esta fecha están revocadas").
+  `CREATE TABLE IF NOT EXISTS admin_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
 ]
 
 type Globals = typeof globalThis & { __puDb?: Client; __puDbReady?: Promise<void> }

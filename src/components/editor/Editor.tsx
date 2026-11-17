@@ -26,6 +26,14 @@ import { useEditorKeys } from './useEditorKeys'
 import { useDesignImages } from './useImages'
 import { useLinePrice } from './useLinePrice'
 
+/**
+ * Disposición del estudio según el espacio disponible:
+ * - stack: una columna (móvil en vertical y tablet estrecha), con barra de precio abajo.
+ * - split: herramientas a la izquierda y lienzo a la derecha (portátiles estrechos, iPad apaisado y móvil apaisado).
+ * - wide: tres columnas con el resumen del pedido siempre visible.
+ */
+type Layout = 'stack' | 'split' | 'wide'
+
 const TABS: TabDef<EditorTab>[] = [
   { id: 'producto', label: 'Producto', icon: Shirt },
   { id: 'subir', label: 'Subir', icon: ImagePlus },
@@ -140,7 +148,9 @@ function EditorShell({ productId }: { productId: ProductId }) {
   const editLineId = useEditor((s) => s.editLineId)
   const sizes = useEditor((s) => s.sizes)
   const layersCount = useEditor((s) => s.design.areas[s.areaId]?.layers.length ?? 0)
-  const desktop = useMediaQuery('(min-width: 1024px)')
+  const wide = useMediaQuery('(min-width: 1280px)')
+  const split = useMediaQuery('(min-width: 1024px), (orientation: landscape) and (max-height: 520px)')
+  const layout: Layout = wide ? 'wide' : split ? 'split' : 'stack'
   const images = useDesignImages(design)
   const price = useLinePrice()
   const cart = useAddToCart()
@@ -154,10 +164,10 @@ function EditorShell({ productId }: { productId: ProductId }) {
 
   const tabs = useMemo(
     () =>
-      (desktop ? TABS.filter((t) => t.id !== 'resumen') : TABS).map((t) => (t.id === 'capas' ? { ...t, badge: layersCount || undefined } : t)),
-    [desktop, layersCount],
+      (wide ? TABS.filter((t) => t.id !== 'resumen') : TABS).map((t) => (t.id === 'capas' ? { ...t, badge: layersCount || undefined } : t)),
+    [wide, layersCount],
   )
-  const activeTab: EditorTab = desktop && tab === 'resumen' ? 'producto' : tab
+  const activeTab: EditorTab = wide && tab === 'resumen' ? 'producto' : tab
   const setTab = useEditor.getState().setTab
 
   const addLabel = editLineId ? 'Guardar cambios' : 'Añadir al carrito'
@@ -170,16 +180,29 @@ function EditorShell({ productId }: { productId: ProductId }) {
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-[24rem_minmax(0,1fr)_22rem]">
+    <div
+      className={cn(
+        'h-full',
+        layout === 'stack' && 'flex min-h-[30rem] flex-col',
+        layout === 'split' && 'grid min-h-0 grid-cols-[20rem_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] lg:grid-cols-[22rem_minmax(0,1fr)]',
+        layout === 'wide' && 'grid min-h-0 grid-cols-[24rem_minmax(0,1fr)_22rem] grid-rows-[minmax(0,1fr)]',
+      )}
+    >
+      <h1 className="sr-only">Personaliza tu {product.name.toLowerCase()}</h1>
+
       {/* Lienzo */}
-      <section aria-label="Lienzo de diseño" className="flex shrink-0 flex-col border-b-2 border-ink bg-cream lg:order-2 lg:min-h-0 lg:flex-1 lg:border-b-0">
+      <section aria-label="Lienzo de diseño" className={cn('flex flex-col bg-cream', layout === 'stack' ? 'shrink-0 border-b-2 border-ink' : 'order-2 min-h-0')}>
         <Toolbar onStartOver={() => setConfirmReset(true)} />
         <div
           data-editor-canvas
           tabIndex={0}
           role="group"
           aria-label={`Lienzo de ${product.name.toLowerCase()}, vista ${view.label.toLowerCase()}. Selecciona un elemento y usa las flechas para moverlo, Supr para eliminarlo.`}
-          className="bg-dots-soft relative mx-3 mb-2 min-h-0 flex-1 overflow-hidden rounded-3xl border-2 border-ink bg-white/60 outline-offset-2 max-lg:h-[min(44dvh,calc((100vw-1.5rem)*var(--ar)))] max-lg:flex-none"
+          className={cn(
+            'bg-dots-soft relative mx-3 mb-2 overflow-hidden rounded-3xl border-2 border-ink bg-white/60 outline-offset-2',
+            // En una columna el lienzo cede altura al panel de herramientas en pantallas bajas (mínimo 9 rem).
+            layout === 'stack' ? 'h-[max(9rem,min(44dvh,calc(100dvh-28.5rem),calc((100vw-1.5rem)*var(--ar))))] flex-none' : 'min-h-0 flex-1',
+          )}
           style={{ ['--ar' as string]: view.viewBox.height / view.viewBox.width }}
         >
           <EditorCanvas images={images} />
@@ -190,7 +213,7 @@ function EditorShell({ productId }: { productId: ProductId }) {
       </section>
 
       {/* Herramientas */}
-      <aside aria-label="Herramientas" className="flex min-h-0 flex-1 flex-col bg-paper lg:order-1 lg:border-r-2 lg:border-ink">
+      <aside aria-label="Herramientas" className={cn('flex min-h-0 flex-col bg-paper', layout === 'stack' ? 'flex-1' : 'order-1 border-r-2 border-ink')}>
         <TabBar
           tabs={tabs}
           value={activeTab}
@@ -216,7 +239,7 @@ function EditorShell({ productId }: { productId: ProductId }) {
       </aside>
 
       {/* Resumen (escritorio) */}
-      {desktop && (
+      {wide && (
         <aside aria-label="Resumen del pedido" className="order-3 flex min-h-0 flex-col border-l-2 border-ink bg-paper">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
             <SummaryPanel />
@@ -232,8 +255,13 @@ function EditorShell({ productId }: { productId: ProductId }) {
       )}
 
       {/* Barra inferior (móvil) */}
-      {!desktop && (
-        <div className="shrink-0 border-t-2 border-ink bg-paper px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+      {!wide && (
+        <div
+          className={cn(
+            'sticky bottom-0 z-10 shrink-0 border-t-2 border-ink bg-paper px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2',
+            layout === 'split' && 'order-3 col-span-2',
+          )}
+        >
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1" aria-live="polite">
               {price.ok ? (
@@ -242,7 +270,7 @@ function EditorShell({ productId }: { productId: ProductId }) {
                   <p className="mt-0.5 truncate text-xs text-ink-soft">IVA incl. · {unidades(qty)}</p>
                 </>
               ) : (
-                <p id={BLOCKER_ID} className={cn('line-clamp-2 text-xs font-bold leading-snug text-pink-deep')}>{finalBlocker}</p>
+                <p id={BLOCKER_ID} className="line-clamp-3 text-xs font-bold leading-snug text-pink-deep">{finalBlocker}</p>
               )}
             </div>
             <CartButton label={addLabel} blocked={!!finalBlocker} working={working} onClick={cart.run} block={false} size="md" />

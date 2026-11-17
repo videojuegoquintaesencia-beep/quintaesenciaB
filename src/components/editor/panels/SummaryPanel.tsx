@@ -121,32 +121,36 @@ export function SummaryPanel() {
       <Group title="Precio">
         {price.ok ? (
           <>
-            <dl className="rounded-2xl border-2 border-ink bg-paper px-3.5 py-2">
-              <Row
-                label={`${product.name} × ${price.quantity}`}
-                value={formatEUR(product.basePriceCents * price.quantity)}
-              />
-              {!!color?.surchargeCents && (
-                <Row label={`Suplemento de color × ${price.quantity}`} value={formatEUR(color.surchargeCents * price.quantity)} />
-              )}
-              {price.prints.map((p) => (
+            <div className="rounded-2xl border-2 border-ink bg-paper px-3.5 py-2">
+              <dl>
                 <Row
-                  key={p.areaId}
-                  label={`Estampado «${p.label}» (${formatNumber(Math.round(p.usedCm2))} cm²) × ${price.quantity}`}
-                  value={formatEUR(p.cents * price.quantity)}
+                  label={`${product.name} × ${price.quantity}`}
+                  value={formatEUR(product.basePriceCents * price.quantity)}
                 />
-              ))}
-              {price.sizeSurchargeCents > 0 && (
-                <Row label={`Suplemento de talla (${sizeSurchargeLines.join(', ')})`} value={formatEUR(price.sizeSurchargeCents)} />
-              )}
-              {price.discountCents > 0 && (
-                <Row label={`Descuento por volumen (${price.discountPct} %)`} value={`−${formatEUR(price.discountCents)}`} />
-              )}
+                {!!color?.surchargeCents && (
+                  <Row label={`Suplemento de color × ${price.quantity}`} value={formatEUR(color.surchargeCents * price.quantity)} />
+                )}
+                {price.prints.map((p) => (
+                  <Row
+                    key={p.areaId}
+                    label={`Estampado «${p.label}» (${formatNumber(Math.round(p.usedCm2))} cm²) × ${price.quantity}`}
+                    value={formatEUR(p.cents * price.quantity)}
+                  />
+                ))}
+                {price.sizeSurchargeCents > 0 && (
+                  <Row label={`Suplemento de talla (${sizeSurchargeLines.join(', ')})`} value={formatEUR(price.sizeSurchargeCents)} />
+                )}
+                {price.discountCents > 0 && (
+                  <Row label={`Descuento por volumen (${price.discountPct} %)`} value={`−${formatEUR(price.discountCents)}`} />
+                )}
+              </dl>
               <div className="mt-1 border-t-2 border-ink pt-1">
-                <Row label="Total" value={formatEUR(price.totalCents)} strong />
+                <dl>
+                  <Row label="Total" value={formatEUR(price.totalCents)} strong />
+                </dl>
                 <p className="pb-1 text-xs text-ink-soft">IVA incluido · Envío no incluido</p>
               </div>
-            </dl>
+            </div>
             <p className="mt-2 text-sm font-bold">
               Precio medio: {formatEUR(price.avgUnitCents)} por unidad
             </p>

@@ -1,4 +1,5 @@
 import { after } from 'next/server'
+import { readBodyText } from '@/lib/http-body'
 import { findOrderIdByCaptureId, notifyOrderPaid } from '@/lib/checkout'
 import {
   addOrderEvent,
@@ -15,8 +16,12 @@ import {
   verifyWebhookSignature,
   type PayPalCapture,
 } from '@/lib/paypal'
+import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+/** Los eventos de PayPal pesan unos pocos KB. */
+const MAX_BODY_BYTES = 256 * 1024
 
 interface WebhookEvent {
   id?: string
@@ -51,16 +56,30 @@ async function orderForCapture(capture: PayPalCapture): Promise<Order | null> {
 export async function POST(req: Request) {
   if (!isPayPalConfigured()) return Response.json({ error: 'PayPal no está configurado.' }, { status: 503 })
 
+  const webhookId = (process.env.PAYPAL_WEBHOOK_ID ?? '').trim()
+  const signed = webhookId !== ''
+  // En producción el webhook sin firma queda desactivado: cualquiera podría provocar llamadas a la API de PayPal.
+  // (Los pagos se confirman igualmente desde el navegador con /api/paypal/capture.)
+  if (!signed && process.env.NODE_ENV === 'production') {
+    console.error('[webhook] Rechazado: define PAYPAL_WEBHOOK_ID para aceptar webhooks de PayPal en producción.')
+    return Response.json({ error: 'Webhook no configurado.' }, { status: 503 })
+  }
+  // Sin firma cada petición cuesta una llamada a PayPal: se limita por IP (con firma, PayPal ya es el único emisor).
+  if (!signed) {
+    const limit = rateLimit(`webhook:${clientIp(req)}`, 30, 60_000)
+    if (!limit.ok) return Response.json({ error: 'Demasiadas peticiones.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } })
+  }
+
+  const text = await readBodyText(req, MAX_BODY_BYTES)
+  if (!text.ok) return Response.json({ error: text.status === 413 ? 'Petición demasiado grande.' : 'Petición no válida.' }, { status: text.status })
   let event: WebhookEvent
   try {
-    event = JSON.parse(await req.text()) as WebhookEvent
+    event = JSON.parse(text.value) as WebhookEvent
   } catch {
     return Response.json({ error: 'Petición no válida.' }, { status: 400 })
   }
   if (typeof event?.event_type !== 'string') return Response.json({ error: 'Petición no válida.' }, { status: 400 })
 
-  const webhookId = (process.env.PAYPAL_WEBHOOK_ID ?? '').trim()
-  const signed = webhookId !== ''
   if (signed && !(await verifyWebhookSignature(req.headers, event, webhookId))) {
     return Response.json({ error: 'Firma no verificable.' }, { status: 400 })
   }
@@ -115,6 +134,11 @@ export async function POST(req: Request) {
     })
     return ok(res.ok ? 'refunded' : 'already-refunded')
   }
-  await addOrderEvent(order.id, 'Reembolso parcial realizado en PayPal', 'paypal')
-  return ok('partial-refund')
+  // Solo se anota lo que PayPal confirma (el cuerpo del evento no es de fiar sin firma): un reembolso "parcial"
+  // exige que la captura figure realmente como PARTIALLY_REFUNDED.
+  if (capture.status === 'PARTIALLY_REFUNDED') {
+    await addOrderEvent(order.id, 'Reembolso parcial realizado en PayPal', 'paypal')
+    return ok('partial-refund')
+  }
+  return ok('ignored')
 }

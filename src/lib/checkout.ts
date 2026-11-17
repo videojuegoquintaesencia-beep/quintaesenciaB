@@ -6,14 +6,17 @@
 import 'server-only'
 import { z } from 'zod'
 import { site } from '@/config/site'
-import { getProduct, getView, type Product } from '@/config/products'
-import { parseDesign, printedAreaIds, designArtworkFileIds } from './design'
+import { getArea, getProduct, getView, type Product } from '@/config/products'
+import { areaUsage, parseDesign, printedAreaIds, designArtworkFileIds, type Design } from './design'
 import { getDb } from './db'
+import { provinceFromPostalCode } from './es-provinces'
 import { sendOrderAdminAlert, sendOrderConfirmation } from './emails/order'
-import { getFileMetas, type FileKind } from './files'
+import { getFileMetas, getPngSizes, type FileKind } from './files'
+import { readBodyJson } from './http-body'
 import { isValidId, newId } from './ids'
 import { addOrderEvent, type NewOrderInput, type Order, type OrderItem, type PaymentProvider } from './orders'
 import { computeCartTotals, priceLine, type LinePrice } from './pricing'
+import { printFileMatchesBox } from './print-file'
 import { addressSchema, customerSchema, fieldErrors } from './validators'
 
 export const MAX_CART_LINES = 20
@@ -95,6 +98,23 @@ function expectedFiles(
   ]
 }
 
+/** Caja (cm) que se cobra por cada zona estampada y archivo de impresión que debe corresponderle. */
+interface PrintBox {
+  fileId: string
+  wCm: number
+  hCm: number
+}
+
+function printBoxes(product: Product, design: Design, printedAreas: string[], printFiles: Record<string, string>): PrintBox[] {
+  const boxes: PrintBox[] = []
+  for (const areaId of printedAreas) {
+    const area = getArea(product, areaId)
+    const bbox = area ? areaUsage(design.areas[areaId]?.layers ?? [], area).bbox : null
+    if (bbox && printFiles[areaId]) boxes.push({ fileId: printFiles[areaId], wCm: bbox.x1 - bbox.x0, hCm: bbox.y1 - bbox.y0 })
+  }
+  return boxes
+}
+
 /** Valida la petición de pago y construye el pedido con importes recalculados en el servidor. */
 export async function prepareOrder(raw: unknown, provider: PaymentProvider): Promise<PrepareResult> {
   const parsed = checkoutSchema.safeParse(raw)
@@ -105,11 +125,16 @@ export async function prepareOrder(raw: unknown, provider: PaymentProvider): Pro
       fieldErrors: errors,
     })
   }
-  const { customer, shipping, note } = parsed.data
+  const { customer, note } = parsed.data
+  // La provincia sale del código postal (que es lo que decide el envío), no del texto que escriba el cliente.
+  const shipping = {
+    ...parsed.data.shipping,
+    province: provinceFromPostalCode(parsed.data.shipping.postalCode) ?? parsed.data.shipping.province,
+  }
 
   const items: OrderItem[] = []
   const prices: LinePrice[] = []
-  const expectedByLine: { lineId: string; label: string; files: { id: string; kinds: FileKind[] }[] }[] = []
+  const expectedByLine: { lineId: string; label: string; files: { id: string; kinds: FileKind[] }[]; boxes: PrintBox[] }[] = []
   const seenLineIds = new Set<string>()
 
   for (const rawLine of parsed.data.lines) {
@@ -140,7 +165,7 @@ export async function prepareOrder(raw: unknown, provider: PaymentProvider): Pro
     const artworkIds = designArtworkFileIds(design)
     const files = expectedFiles(product, printed, line, artworkIds)
     if (typeof files === 'string') return fail(422, 'line_invalid', `${label}: ${files}`, { lineIds: [lineId] })
-    expectedByLine.push({ lineId, label, files })
+    expectedByLine.push({ lineId, label, files, boxes: printBoxes(product, design, printed, line.printFiles) })
 
     prices.push(price)
     items.push({
@@ -185,6 +210,24 @@ export async function prepareOrder(raw: unknown, provider: PaymentProvider): Pro
   const wrongKind = expectedByLine.filter((l) => l.files.some((f) => !f.kinds.includes(kindById.get(f.id) as FileKind)))
   if (wrongKind.length > 0)
     return fail(422, 'line_invalid', 'Hay archivos del carrito que no son válidos.', { lineIds: wrongKind.map((l) => l.lineId) })
+
+  // El archivo de impresión debe medir lo que se cobra: el precio sale de la superficie declarada en el diseño,
+  // así que un PNG de otro tamaño permitiría pagar un estampado pequeño e imprimir uno grande.
+  const sizes = await getPngSizes([...new Set(expectedByLine.flatMap((l) => l.boxes.map((b) => b.fileId)))])
+  const mismatched = expectedByLine.filter((l) =>
+    l.boxes.some((b) => {
+      const size = sizes.get(b.fileId)
+      return !size || !printFileMatchesBox(size, b.wCm, b.hCm)
+    }),
+  )
+  if (mismatched.length > 0) {
+    return fail(
+      422,
+      'line_invalid',
+      `${mismatched[0].label}: el archivo de impresión no se corresponde con el diseño. Abre el diseño en el editor y vuelve a añadirlo al carrito.`,
+      { lineIds: mismatched.map((l) => l.lineId) },
+    )
+  }
 
   const totals = computeCartTotals(
     prices.map((p) => p.totalCents),
@@ -237,14 +280,11 @@ export async function findOrderIdByCaptureId(captureId: string): Promise<string 
   return res.rows[0] ? String(res.rows[0].id) : null
 }
 
-/** Lee el cuerpo JSON de una petición con un tope de tamaño; devuelve undefined si no es JSON válido. */
+/**
+ * Lee el cuerpo JSON de una petición con un tope REAL de tamaño (también sin `Content-Length`);
+ * devuelve undefined si no es JSON válido o es demasiado grande.
+ */
 export async function readJsonBody(req: Request, maxBytes = 512 * 1024): Promise<unknown> {
-  if (Number(req.headers.get('content-length') ?? 0) > maxBytes) return undefined
-  try {
-    const text = await req.text()
-    if (text.length > maxBytes) return undefined
-    return JSON.parse(text)
-  } catch {
-    return undefined
-  }
+  const res = await readBodyJson(req, maxBytes)
+  return res.ok ? res.value : undefined
 }

@@ -392,6 +392,16 @@ export function getView(product: Product, viewId: string): ProductView | undefin
   return product.views.find((v) => v.id === viewId)
 }
 
+/**
+ * true si la superficie donde se estampa es oscura (para elegir tinta clara en guías y texto nuevo).
+ * En las tazas el cuerpo siempre es blanco: el color solo afecta al interior y al asa.
+ */
+export function isDarkSurface(product: Product, colorId: string): boolean {
+  if (product.id === 'taza') return false
+  const color = getColor(product, colorId)
+  return !!color && !color.light
+}
+
 export function allAreas(product: Product): (PrintArea & { viewId: string })[] {
   return product.views.flatMap((v) => v.areas.map((a) => ({ ...a, viewId: v.id })))
 }

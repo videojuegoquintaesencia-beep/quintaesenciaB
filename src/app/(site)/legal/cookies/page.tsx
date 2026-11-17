@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { LegalPage, type LegalSection } from '@/components/content/LegalPage'
 import { LegalFacts } from '@/components/content/LegalValue'
 import { pageMetadata } from '@/components/content/metadata'
-import { ADMIN_SESSION_SECONDS } from '@/lib/auth-token'
+import { ADMIN_COOKIE, ADMIN_SESSION_SECONDS } from '@/lib/auth-token'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Política de cookies',
@@ -36,7 +36,7 @@ const ENTRIES: { title: string; rows: { label: string; value: string }[] }[] = [
   {
     title: 'Sesión del panel de administración',
     rows: [
-      { label: 'Nombre', value: 'pu_admin' },
+      { label: 'Nombre', value: ADMIN_COOKIE },
       { label: 'Tipo', value: 'Cookie propia, técnica y de sesión (HttpOnly).' },
       { label: 'Para qué sirve', value: 'Mantener abierta la sesión de las personas que gestionan la tienda. No se instala a quienes visitan la web.' },
       { label: 'Duración', value: `${adminHours} horas como máximo.` },

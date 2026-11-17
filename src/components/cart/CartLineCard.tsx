@@ -69,7 +69,8 @@ export function CartLineCard({ priced, expired }: { priced: PricedLine; expired?
                 {priced.color?.name ?? line.colorId}
               </p>
             </div>
-            <p className="shrink-0 font-display text-xl font-semibold" aria-label="Importe de la línea">
+            <p className="shrink-0 font-display text-xl font-semibold">
+              <span className="sr-only">Importe de la línea: </span>
               {price ? formatEUR(price.totalCents) : '—'}
             </p>
           </div>

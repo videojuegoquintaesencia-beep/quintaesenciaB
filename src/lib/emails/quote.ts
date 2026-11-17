@@ -11,7 +11,18 @@ import type { Quote } from '../quotes'
 const MUTED = '#4a4270'
 const LINE = '#e9e3f5'
 
-const firstName = (quote: Quote) => quote.name.trim().split(/\s+/)[0] || quote.name
+/**
+ * Nombre de pila para el saludo. Solo se usa si parece un nombre (letras, apóstrofo o guion): el formulario es
+ * público y este email sale con el dominio de la tienda, así que no se reproduce texto libre de quien escribe.
+ */
+const firstName = (quote: Quote) => {
+  const first = quote.name.trim().split(/\s+/)[0] ?? ''
+  return /^[\p{L}][\p{L}'’-]{0,29}$/u.test(first) ? first : ''
+}
+const greeting = (quote: Quote) => {
+  const name = firstName(quote)
+  return name ? `Hola ${name}` : 'Hola'
+}
 
 const productLabel = (id: string) => QUOTE_PRODUCT_LABELS[id as QuoteProduct]?.toLowerCase() ?? id
 const productsText = (quote: Quote) => quote.products.map(productLabel).join(', ')
@@ -55,10 +66,6 @@ function rowsHtml(rows: Row[]): string {
 
 const rowsText = (rows: Row[]) => rows.map(([l, v]) => `${l}: ${v}`).join('\n')
 
-const quoteBlock = (text: string) =>
-  `<p style="margin:0 0 6px;font-size:14px;color:${MUTED}">Esto es lo que nos has contado:</p>
-   <p style="margin:0 0 18px;background:#fff8ec;border-left:4px solid #ff4f9a;border-radius:8px;padding:12px 14px;white-space:pre-wrap">${esc(text)}</p>`
-
 /** Acuse de recibo al cliente. */
 export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
   const isQuote = quote.kind === 'quote'
@@ -77,23 +84,19 @@ export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
     html: emailShell({
       title: isQuote ? '¡Solicitud recibida!' : '¡Mensaje recibido!',
       preheader: 'Te respondemos en 1-2 días laborables.',
-      bodyHtml: `<p style="margin:0 0 12px">Hola ${esc(firstName(quote))}, gracias por escribirnos. Hemos recibido tu ${what} y te responderemos en <strong>1-2 días laborables</strong>.</p>
+      bodyHtml: `<p style="margin:0 0 12px">${esc(greeting(quote))}, gracias por escribirnos. Hemos recibido tu ${what} y te responderemos en <strong>1-2 días laborables</strong>.</p>
         <p style="margin:0 0 4px">${next}</p>
         ${rowsHtml(rows)}
-        ${quoteBlock(quote.message)}
         <p style="margin:0">¿Quieres añadir algo? Responde a este email y lo sumamos a tu ${isQuote ? 'solicitud' : 'mensaje'}.</p>`,
       ctaLabel: cta.label,
       ctaUrl: cta.url,
     }),
     text: [
-      `Hola ${firstName(quote)}, gracias por escribirnos.`,
+      `${greeting(quote)}, gracias por escribirnos.`,
       '',
       `Hemos recibido tu ${what} y te responderemos en 1-2 días laborables. ${next}`,
       '',
       rowsText(rows),
-      '',
-      'Esto es lo que nos has contado:',
-      quote.message,
       '',
       `¿Quieres añadir algo? Responde a este email y lo sumamos a tu ${isQuote ? 'solicitud' : 'mensaje'}.`,
       '',

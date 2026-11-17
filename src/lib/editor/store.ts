@@ -4,7 +4,7 @@
  * instantáneas inmutables del diseño completo, así que deshacer/rehacer es barato.
  */
 import { create } from 'zustand'
-import { getArea, getProduct, getView, isSingleSize, type PrintArea, type Product, type ProductId } from '@/config/products'
+import { getArea, getProduct, getView, isDarkSurface, isSingleSize, type PrintArea, type Product, type ProductId } from '@/config/products'
 import { layerBounds, emptyDesign, type Design, type ImageLayer, type Layer, type StickerLayer, type TextLayer } from '@/lib/design'
 import { newId } from '@/lib/ids'
 import { getSticker } from '@/lib/stickers'
@@ -229,7 +229,8 @@ export const useEditor = create<EditorState>()((set, get) => {
         text: 'Tu texto',
         font: 'fredoka',
         sizeCm,
-        fill: '#1b1340',
+        // En prendas oscuras el texto nuevo nace blanco: en tinta oscura sería invisible.
+        fill: isDarkSurface(productOf(get().productId), get().design.colorId) ? '#ffffff' : '#1b1340',
         align: 'center',
         bold: true,
       }

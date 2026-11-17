@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { ImagePlus, LoaderCircle, TriangleAlert, X } from 'lucide-react'
 import { site } from '@/config/site'
 import { cn } from '@/lib/cn'
@@ -38,10 +38,16 @@ export function UploadPanel({ images }: { images: ImageMap }) {
   const [pending, setPending] = useState<Pending[]>([])
   const [errors, setErrors] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
+  const errorsRef = useRef<HTMLDivElement>(null)
   const selectedLayer = useEditor((s) => {
     const l = s.design.areas[s.areaId]?.layers.find((x) => x.id === s.selectedId)
     return l?.type === 'image' ? l : null
   })
+
+  // En móvil el panel es bajo: los errores se pintan arriba del todo y se traen a la vista al aparecer.
+  useEffect(() => {
+    if (errors.length > 0) errorsRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [errors])
 
   const addError = (message: string) => setErrors((prev) => [...prev.slice(-3), message])
 
@@ -84,6 +90,39 @@ export function UploadPanel({ images }: { images: ImageMap }) {
     <div>
       <PanelTitle hint="Logotipos, dibujos o fotos. Se colocan centrados en la zona elegida.">Sube tu imagen</PanelTitle>
 
+      {pending.length > 0 && (
+        <ul className="mb-3 grid gap-2" aria-label="Subidas en curso">
+          {pending.map((p) => (
+            <li key={p.key} className="flex items-center gap-2 rounded-xl border-2 border-ink bg-paper p-2.5 text-sm">
+              <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
+              <span className="min-w-0 flex-1 truncate font-bold">Subiendo {p.name}…</span>
+              <span className="tabular-nums text-ink-soft">{Math.round(p.progress * 100)} %</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {errors.length > 0 && (
+        <div ref={errorsRef} role="alert" className="mb-3 scroll-mt-2">
+          <ul className="grid gap-2">
+            {errors.map((message, i) => (
+              <li key={`${i}-${message}`} className="flex items-start gap-2 rounded-xl border-2 border-ink bg-danger-soft p-2.5 text-sm font-bold">
+                <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <span className="min-w-0 flex-1">{message}</span>
+                <button
+                  type="button"
+                  aria-label="Descartar aviso"
+                  className="-m-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-white/60"
+                  onClick={() => setErrors((prev) => prev.filter((_, j) => j !== i))}
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div
         onDragOver={(e) => {
           e.preventDefault()
@@ -116,37 +155,6 @@ export function UploadPanel({ images }: { images: ImageMap }) {
         />
         <p className="text-sm text-ink-soft">PNG, JPG, WebP o SVG · hasta {maxMb} MB</p>
       </div>
-
-      {pending.length > 0 && (
-        <ul className="mt-3 grid gap-2" aria-label="Subidas en curso">
-          {pending.map((p) => (
-            <li key={p.key} className="flex items-center gap-2 rounded-xl border-2 border-ink bg-paper p-2.5 text-sm">
-              <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
-              <span className="min-w-0 flex-1 truncate font-bold">Subiendo {p.name}…</span>
-              <span className="tabular-nums text-ink-soft">{Math.round(p.progress * 100)} %</span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {errors.length > 0 && (
-        <ul className="mt-3 grid gap-2" role="alert">
-          {errors.map((message, i) => (
-            <li key={`${i}-${message}`} className="flex items-start gap-2 rounded-xl border-2 border-ink bg-danger-soft p-2.5 text-sm font-bold">
-              <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              <span className="min-w-0 flex-1">{message}</span>
-              <button
-                type="button"
-                aria-label="Descartar aviso"
-                className="-m-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-white/60"
-                onClick={() => setErrors((prev) => prev.filter((_, j) => j !== i))}
-              >
-                <X aria-hidden="true" className="size-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
 
       {selectedLayer && (
         <Group title="Calidad de la imagen seleccionada" className="mt-5">

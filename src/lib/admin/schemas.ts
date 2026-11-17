@@ -1,5 +1,6 @@
 /** Validación (zod) de lo que envía el panel a las rutas /api/admin. */
 import { z } from 'zod'
+import '@/lib/zod-es'
 import { ORDER_STATUSES, QUOTE_STATUSES } from '@/lib/order-status'
 
 const INVALID = 'Datos no válidos'

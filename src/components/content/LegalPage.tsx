@@ -76,7 +76,7 @@ export function LegalPage({
           {showToc && (
             <>
               <details className="card-flat p-4 lg:hidden print:hidden">
-                <summary className="cursor-pointer font-display text-lg font-semibold">Índice de contenidos</summary>
+                <summary className="-my-2 cursor-pointer py-2 font-display text-lg font-semibold">Índice de contenidos</summary>
                 <nav aria-label="Índice de contenidos" className="mt-3">
                   <TocList sections={sections} />
                 </nav>

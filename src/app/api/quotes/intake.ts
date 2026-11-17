@@ -7,24 +7,25 @@ import type { ZodType } from 'zod'
 import { site } from '@/config/site'
 import { sendQuoteAdminAlert, sendQuoteReceived } from '@/lib/emails/quote'
 import type { Quote, QuoteKind } from '@/lib/quotes'
+import { readBodyJson } from '@/lib/http-body'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
 import { fieldErrors, firstZodError } from '@/lib/validators'
 
 const MAX_BODY_BYTES = 32 * 1024
+const MAX_ACKS_PER_RECIPIENT_PER_DAY = 3
 const NUMBER_PREFIX: Record<QuoteKind, string> = { quote: 'PR', contact: 'MS' }
 
 type Failure = { ok: false; error: string; errors?: Record<string, string> }
 const fail = (status: number, body: Failure, headers?: HeadersInit) => Response.json(body, { status, headers })
 
-async function readBody(req: Request): Promise<Record<string, unknown> | null> {
-  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) return null
-  try {
-    const text = await req.text()
-    if (text.length > MAX_BODY_BYTES) return null
-    const json: unknown = JSON.parse(text)
-    return json && typeof json === 'object' && !Array.isArray(json) ? (json as Record<string, unknown>) : null
-  } catch {
-    return null
+/** Lee el JSON con tope real de bytes (también sin Content-Length). */
+async function readBody(req: Request): Promise<{ body: Record<string, unknown> | null; tooLarge: boolean }> {
+  const res = await readBodyJson(req, MAX_BODY_BYTES)
+  if (!res.ok) return { body: null, tooLarge: res.status === 413 }
+  const json = res.value
+  return {
+    body: json && typeof json === 'object' && !Array.isArray(json) ? (json as Record<string, unknown>) : null,
+    tooLarge: false,
   }
 }
 
@@ -53,7 +54,8 @@ export async function handleIntake<T>(
     )
   }
 
-  const body = await readBody(req)
+  const { body, tooLarge } = await readBody(req)
+  if (tooLarge) return fail(413, { ok: false, error: 'El mensaje es demasiado grande.' })
   if (!body) return fail(400, { ok: false, error: 'Petición no válida.' })
 
   // Campo trampa: las personas no lo ven, los bots lo rellenan. Se responde "bien" sin guardar nada.
@@ -78,8 +80,11 @@ export async function handleIntake<T>(
   }
 
   // Los emails se envían tras responder y nunca hacen fallar la petición.
+  // El acuse de recibo sale con el dominio de la tienda hacia cualquier dirección que se escriba en el formulario:
+  // se limita por destinatario (3 al día) para que no sirva de relé de correo no deseado hacia terceros.
+  const ackAllowed = rateLimit(`ack:${quote.email}`, MAX_ACKS_PER_RECIPIENT_PER_DAY, 24 * 60 * 60_000).ok
   after(async () => {
-    await Promise.allSettled([sendQuoteReceived(quote), sendQuoteAdminAlert(quote)])
+    await Promise.allSettled([ackAllowed ? sendQuoteReceived(quote) : Promise.resolve(), sendQuoteAdminAlert(quote)])
   })
 
   return Response.json({ ok: true, number: quote.number })

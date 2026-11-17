@@ -12,7 +12,7 @@ export interface TabItem {
 /** Pestañas como enlaces: cada pestaña es una URL (se pueden compartir y funcionan sin JavaScript). */
 export function Tabs({ label, tabs, active }: { label: string; tabs: TabItem[]; active: string }) {
   return (
-    <nav aria-label={label} className="mb-5 border-b-2 border-ink">
+    <nav aria-label={label} className="mb-5 overflow-x-auto border-b-2 border-ink">
       <ul className="flex gap-2">
         {tabs.map((tab) => {
           const on = tab.key === active

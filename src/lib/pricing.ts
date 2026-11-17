@@ -121,7 +121,7 @@ export function priceLine(input: LineInput): LinePrice | PriceError {
     }
 
   const prints = printCharges(product, design)
-  if (prints.length === 0) return { ok: false, error: 'Añade al menos un elemento de diseño dentro de la zona de estampado.' }
+  if (prints.length === 0) return { ok: false, error: 'Añade una imagen, texto o pegatina a la zona de estampado.' }
 
   const unitBaseCents = product.basePriceCents + (color.surchargeCents ?? 0)
   const printCents = prints.reduce((n, p) => n + p.cents, 0)

@@ -77,7 +77,7 @@ export function Hero() {
           </ul>
           <p className="mt-6 text-sm text-ink-soft">
             ¿Primera vez?{' '}
-            <Link href="/como-funciona" className="inline-flex items-center gap-1 font-bold text-violet-deep underline underline-offset-4">
+            <Link href="/como-funciona" className="inline-flex min-h-11 items-center gap-1 font-bold text-violet-deep underline underline-offset-4">
               Mira cómo funciona <ArrowRight aria-hidden="true" size={14} />
             </Link>
           </p>

@@ -149,13 +149,13 @@ export default function ComoFuncionaPage() {
           Con estos cuatro detalles tu estampado saldrá como esperas.
         </SectionHeading>
         <div className="grid items-start gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <ul className="grid gap-4 sm:grid-cols-2">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {DO_LIST.map((item) => (
               <li key={item.title} className="card flex gap-3 p-5">
                 <span aria-hidden="true" className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-teal">
                   <Check className="size-4" strokeWidth={3} />
                 </span>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-lg">{item.title}</h3>
                   <p className="mt-1 text-ink-soft">{item.text}</p>
                 </div>

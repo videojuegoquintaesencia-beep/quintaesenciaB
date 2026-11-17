@@ -10,6 +10,7 @@ import { Pagination } from '@/components/admin/Pagination'
 import { SearchForm } from '@/components/admin/SearchForm'
 import { ButtonLink } from '@/components/ui/Button'
 import { ORDER_STATUSES, ORDER_STATUS_LABEL } from '@/lib/order-status'
+import { requireAdmin } from '@/lib/auth'
 import { getOrderStats, listOrders } from '@/lib/orders'
 import { ORDERS_PAGE_SIZE, parseOrdersFilters } from '@/lib/admin/orders-filters'
 import { hrefWith, type SearchParams } from '@/lib/admin/params'
@@ -19,6 +20,7 @@ export const metadata: Metadata = { title: 'Pedidos' }
 const BASE = '/admin/pedidos'
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  await requireAdmin()
   const filters = parseOrdersFilters(await searchParams)
   const { status, q, includeUnpaid, page } = filters
 

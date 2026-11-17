@@ -24,13 +24,14 @@ export function CartLink() {
   return (
     <Link
       href="/carrito"
-      aria-label={count > 0 ? `Carrito, ${unidades(count)}` : 'Carrito, vacío'}
       className="relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full border-2 border-ink bg-paper px-2.5 text-ink transition-colors hover:bg-yellow-soft xl:px-4"
     >
       <ShoppingBag aria-hidden="true" size={22} strokeWidth={2.3} />
       <span className="hidden font-display font-semibold xl:inline" aria-hidden="true">
         Carrito
       </span>
+      {/* Nombre accesible por contenido (no por aria-label) para que incluya siempre el texto visible. */}
+      <span className="sr-only">Carrito{count > 0 ? `, ${unidades(count)}` : ', vacío'}</span>
       {count > 0 && (
         <span
           aria-hidden="true"

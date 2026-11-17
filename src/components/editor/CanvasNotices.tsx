@@ -21,7 +21,7 @@ export function CanvasNotices({ images }: { images: ImageMap }) {
   const outside = layers.filter((l) => layerOutside(l, area))
   const partly = layers.filter((l) => !layerOutside(l, area) && layerOverflows(l, area))
   if (outside.length) notices.push(`«${layerName(outside[0])}» está fuera de la zona y no se imprimirá.`)
-  if (partly.length) notices.push(`«${layerName(partly[0])}» sobresale de la zona: solo se imprime la parte de dentro (la parte atenuada se queda fuera).`)
+  if (partly.length) notices.push(`«${layerName(partly[0])}» sobresale de la zona: solo se imprime lo de dentro (lo atenuado queda fuera).`)
   for (const l of layers) {
     if (l.type !== 'image') continue
     const img = images[l.fileId]
@@ -31,17 +31,24 @@ export function CanvasNotices({ images }: { images: ImageMap }) {
       if (dpi < LOW_DPI) notices.push(`«${layerName(l)}»: resolución baja (${dpi} ppp), puede verse pixelado.`)
     }
   }
-  if (!notices.length) return null
 
+  // El contenedor de aviso (role=status) existe siempre: así los lectores de pantalla anuncian los avisos que aparecen después.
   return (
-    <ul className="pointer-events-none absolute inset-x-2 bottom-2 grid gap-1" role="status" aria-label="Avisos del lienzo">
-      {notices.slice(0, 2).map((n) => (
-        <li key={n} className="flex items-start gap-1.5 rounded-xl border-2 border-ink bg-yellow-soft/95 px-2.5 py-1 text-xs font-bold leading-snug max-sm:[&:nth-child(n+2)]:hidden sm:text-sm">
-          <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-          {n}
-        </li>
-      ))}
-    </ul>
+    <div role="status" aria-label="Avisos del lienzo" className="pointer-events-none absolute inset-x-2 bottom-2">
+      {notices.length > 0 && (
+        <ul className="grid gap-1">
+          {notices.slice(0, 2).map((n) => (
+            <li
+              key={n}
+              className="flex items-start gap-1.5 rounded-xl border-2 border-ink bg-yellow-soft/95 px-2 py-0.5 text-[0.7rem] font-bold leading-tight max-sm:[&:nth-child(n+2)]:hidden sm:px-2.5 sm:py-1 sm:text-sm sm:leading-snug"
+            >
+              <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+              <span className="line-clamp-2 min-w-0">{n}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 

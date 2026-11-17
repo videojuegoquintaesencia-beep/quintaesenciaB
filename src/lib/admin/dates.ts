@@ -1,7 +1,7 @@
 /**
  * Fechas del panel: siempre en la hora de España peninsular, con independencia de la zona horaria del servidor.
  */
-const TZ = 'Europe/Madrid'
+import { SPAIN_TIME_ZONE as TZ } from '@/lib/format'
 
 const dateFmt = new Intl.DateTimeFormat('es-ES', { timeZone: TZ, day: '2-digit', month: 'short', year: 'numeric' })
 const dateTimeFmt = new Intl.DateTimeFormat('es-ES', {

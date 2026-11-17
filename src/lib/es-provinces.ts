@@ -75,3 +75,75 @@ export const DELIVERABLE_PROVINCES: string[] = Object.entries(PROVINCE_BY_PREFIX
   .filter(([prefix]) => !excluded.includes(prefix))
   .map(([, name]) => name)
   .sort((a, b) => a.localeCompare(b, 'es'))
+
+/* ───────────── Coherencia entre código postal, provincia y localidad ───────────── */
+
+/** Minúsculas, sin tildes ni signos, con espacios simples ("A Coruña" → "a coruna"). */
+function normalizeName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/** Otros nombres con los que se conocen las provincias (castellano, cooficial, comunidad uniprovincial…). */
+const PROVINCE_ALIASES: Record<string, string[]> = {
+  '01': ['alava', 'araba', 'araba alava'],
+  '03': ['alacant', 'alicante alacant'],
+  '07': ['baleares', 'islas baleares', 'illes balears', 'balears'],
+  '12': ['castello', 'castellon castello'],
+  '15': ['la coruna', 'coruna', 'a coruna la coruna'],
+  '17': ['gerona'],
+  '20': ['guipuzcoa'],
+  '25': ['lerida'],
+  '26': ['rioja'],
+  '28': ['comunidad de madrid'],
+  '30': ['region de murcia'],
+  '31': ['nafarroa', 'comunidad foral de navarra'],
+  '32': ['orense'],
+  '33': ['principado de asturias'],
+  '39': ['cantabria'],
+  '46': ['valencia valencia'],
+  '48': ['vizcaya'],
+}
+
+const PREFIXES_BY_NAME = new Map<string, string[]>()
+function addName(name: string, prefix: string) {
+  const key = normalizeName(name)
+  PREFIXES_BY_NAME.set(key, [...(PREFIXES_BY_NAME.get(key) ?? []), prefix])
+}
+for (const [prefix, name] of Object.entries(PROVINCE_BY_PREFIX)) addName(name, prefix)
+for (const [prefix, names] of Object.entries(PROVINCE_ALIASES)) for (const name of names) addName(name, prefix)
+// Nombres de zona que abarcan varias provincias.
+addName('canarias', '35')
+addName('canarias', '38')
+
+/** Palabras que identifican las zonas a las que no enviamos. En la provincia son más amplias que en la localidad. */
+const EXCLUDED_IN_PROVINCE = ['canarias', 'las palmas', 'gran canaria', 'tenerife', 'lanzarote', 'fuerteventura', 'la gomera', 'la palma', 'el hierro', 'ceuta', 'melilla']
+const EXCLUDED_IN_CITY = ['canarias', 'las palmas de gran canaria', 'gran canaria', 'tenerife', 'lanzarote', 'fuerteventura', 'la gomera', 'ceuta', 'melilla']
+
+const containsPhrase = (text: string, phrase: string) => ` ${text} `.includes(` ${phrase} `)
+
+export interface AddressZoneIssue {
+  field: 'province' | 'city'
+  message: string
+}
+
+/**
+ * El servidor solo valida el código postal para decidir el envío; sin este cruce se podía poner un CP peninsular
+ * con provincia o localidad de Canarias/Ceuta/Melilla (zonas sin envío) o de otra provincia. Devuelve el problema
+ * encontrado o null si todo cuadra (o si el texto de la provincia no se reconoce: en ese caso manda el CP).
+ */
+export function addressZoneIssue(address: { postalCode: string; province: string; city: string }): AddressZoneIssue | null {
+  const prefix = normalizePostalCode(address.postalCode).slice(0, 2)
+  const province = normalizeName(address.province)
+  const city = normalizeName(address.city)
+  const excluded = `Aún no enviamos a ${site.shipping.excludedZonesLabel} desde la tienda. Escríbenos y lo vemos.`
+  if (EXCLUDED_IN_PROVINCE.some((p) => containsPhrase(province, p))) return { field: 'province', message: excluded }
+  if (EXCLUDED_IN_CITY.some((p) => containsPhrase(city, p))) return { field: 'city', message: excluded }
+  const known = PREFIXES_BY_NAME.get(province)
+  if (known && !known.includes(prefix)) return { field: 'province', message: 'La provincia no coincide con el código postal.' }
+  return null
+}

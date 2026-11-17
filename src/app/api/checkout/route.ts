@@ -1,9 +1,15 @@
-import { PAYMENT_UNAVAILABLE_MESSAGE, prepareOrder, readJsonBody, recordConsents } from '@/lib/checkout'
+import { after } from 'next/server'
+import { PAYMENT_UNAVAILABLE_MESSAGE, prepareOrder, recordConsents } from '@/lib/checkout'
+import { readBodyJson } from '@/lib/http-body'
+import { runMaintenanceIfDue } from '@/lib/maintenance'
 import { createOrder, markPaymentFailed, setPayPalOrderId } from '@/lib/orders'
 import { createPayPalOrder, paymentMode } from '@/lib/paypal'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+/** Tope del cuerpo (20 líneas con diseños de hasta 80 capas caben de sobra). */
+const MAX_BODY_BYTES = 512 * 1024
 
 const tooMany = (retryAfterSec: number) =>
   Response.json(
@@ -25,10 +31,13 @@ export async function POST(req: Request) {
   const gate = rateLimit(`checkout-any:${ip}`, 200, 10 * 60_000)
   if (!gate.ok) return tooMany(gate.retryAfterSec)
 
-  const body = await readJsonBody(req)
-  if (body === undefined) return Response.json({ error: 'Petición no válida.', code: 'validation' }, { status: 400 })
+  const body = await readBodyJson(req, MAX_BODY_BYTES)
+  if (!body.ok) {
+    const error = body.status === 413 ? 'La petición es demasiado grande.' : 'Petición no válida.'
+    return Response.json({ error, code: 'validation' }, { status: body.status })
+  }
 
-  const prepared = await prepareOrder(body, mode === 'demo' ? 'demo' : 'paypal')
+  const prepared = await prepareOrder(body.value, mode === 'demo' ? 'demo' : 'paypal')
   if (!prepared.ok) {
     const { status, ...payload } = prepared
     return Response.json(payload, { status })
@@ -39,6 +48,8 @@ export async function POST(req: Request) {
 
   const order = await createOrder(prepared.input)
   await recordConsents(order.id)
+  // Limpieza periódica (como mucho una vez por hora): pedidos que nunca se pagaron y archivos huérfanos.
+  after(() => runMaintenanceIfDue())
 
   if (mode === 'demo') return Response.json({ orderId: order.id })
 

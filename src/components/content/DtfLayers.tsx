@@ -1,15 +1,16 @@
 import { cn } from '@/lib/cn'
 
-const LAYERS = [
+const LAYERS: { name: string; note: string; className: string; noteClassName?: string }[] = [
   {
     name: 'Tinta de color (CMYK)',
     note: 'Tu diseño, lo que ves',
     className: 'bg-gradient-to-r from-pink via-yellow to-teal',
+    noteClassName: 'text-ink',
   },
   { name: 'Tinta blanca', note: 'Da base y hace que el color destaque', className: 'bg-paper' },
   { name: 'Adhesivo', note: 'Polvo fundido que fija el estampado', className: 'bg-yellow-soft bg-dots-soft' },
   { name: 'Tu prenda', note: 'Algodón o mezcla, clara u oscura', className: 'bg-violet-soft' },
-] as const
+]
 
 /** Corte lateral de un estampado DTF, de arriba (lo que se ve) a abajo (la tela). */
 export function DtfLayers() {
@@ -26,7 +27,7 @@ export function DtfLayers() {
             )}
           >
             <span className="font-display text-lg font-semibold">{layer.name}</span>
-            <span className="text-sm font-bold text-ink-soft">{layer.note}</span>
+            <span className={cn('text-sm font-bold', layer.noteClassName ?? 'text-ink-soft')}>{layer.note}</span>
           </li>
         ))}
       </ol>

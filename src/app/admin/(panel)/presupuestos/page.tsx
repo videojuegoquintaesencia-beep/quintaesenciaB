@@ -10,6 +10,7 @@ import { QuotesList } from '@/components/admin/QuotesList'
 import { SearchForm } from '@/components/admin/SearchForm'
 import { Tabs } from '@/components/admin/Tabs'
 import { listQuotes } from '@/lib/quotes'
+import { requireAdmin } from '@/lib/auth'
 import { hrefWith, type SearchParams } from '@/lib/admin/params'
 import { parseQuotesFilters, QUOTES_PAGE_SIZE, type QuotesStatusFilter } from '@/lib/admin/quotes-filters'
 
@@ -29,6 +30,7 @@ const STATUS_CHIPS: { key: QuotesStatusFilter; label: string }[] = [
 ]
 
 export default async function QuotesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  await requireAdmin()
   const { tab, kind, status, q, page } = parseQuotesFilters(await searchParams)
 
   const link = (changes: { tipo?: string; estado?: string; q?: string; pagina?: number } = {}) => {

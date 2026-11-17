@@ -5,7 +5,10 @@
 import 'server-only'
 import { site } from '@/config/site'
 import { getDb, nowIso } from './db'
+import { MAX_PRINT_PIXELS } from './editor/constants'
+import { inspectRaster, readPngHeader } from './image-info'
 import { newId } from './ids'
+import { checkSvg } from './svg-safety'
 
 export const FILE_KINDS = ['artwork', 'preview', 'print', 'quote'] as const
 export type FileKind = (typeof FILE_KINDS)[number]
@@ -24,31 +27,57 @@ export interface StoredFile {
 
 export type FileMeta = Omit<StoredFile, 'bytes'>
 
-/** Detecta el tipo real por los primeros bytes (no nos fiamos del nombre ni del Content-Type del cliente). */
-export function sniffImageMime(bytes: Uint8Array): (typeof site.uploads.acceptedArtworkTypes)[number] | null {
-  if (bytes.length < 12) return null
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png'
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
-  if (
-    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
-  )
-    return 'image/webp'
-  const head = new TextDecoder().decode(bytes.slice(0, Math.min(bytes.length, 2048))).toLowerCase()
-  if (head.includes('<svg')) return 'image/svg+xml'
-  return null
+export type UploadInspection =
+  | { ok: true; mime: (typeof site.uploads.acceptedArtworkTypes)[number]; width: number | null; height: number | null }
+  | { ok: false; status: 400 | 415; error: string }
+
+const UNSUPPORTED = 'Formato no admitido. Sube una imagen PNG, JPG, WebP o SVG.'
+
+/** Píxeles máximos según el tipo de archivo (los generados por el editor tienen tamaños acotados). */
+const MAX_PIXELS_BY_KIND: Partial<Record<FileKind, number>> = {
+  print: Math.round(MAX_PRINT_PIXELS * 1.1),
+  preview: 4_000_000,
 }
 
-/** Rechazo básico de SVG con contenido activo (además se sirven siempre con CSP "sandbox"). */
-export function svgLooksUnsafe(bytes: Uint8Array): boolean {
-  const text = new TextDecoder().decode(bytes).toLowerCase()
-  return (
-    text.includes('<script') ||
-    text.includes('javascript:') ||
-    text.includes('<foreignobject') ||
-    /\son[a-z]+\s*=/.test(text) ||
-    text.includes('<!entity')
-  )
+/**
+ * Valida un archivo subido por su ESTRUCTURA, no solo por los primeros bytes: un PNG/JPEG/WebP debe estar
+ * completo y con dimensiones razonables (rechaza basura con cabecera de imagen y "bombas" de píxeles), y un
+ * SVG solo puede contener elementos y atributos de una lista blanca.
+ */
+export function inspectUpload(kind: FileKind, bytes: Uint8Array): UploadInspection {
+  const looksRaster =
+    bytes.length >= 12 &&
+    ((bytes[0] === 0x89 && bytes[1] === 0x50) || (bytes[0] === 0xff && bytes[1] === 0xd8) || (bytes[0] === 0x52 && bytes[1] === 0x49))
+  if (looksRaster) {
+    const info = inspectRaster(bytes)
+    if (!info) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'No podemos leer esa imagen: parece dañada o incompleta. Expórtala de nuevo como PNG, JPG o WebP e inténtalo otra vez.',
+      }
+    }
+    if (kind === 'print' && info.mime !== 'image/png') return { ok: false, status: 415, error: 'El archivo de impresión debe ser PNG.' }
+    const maxPixels = MAX_PIXELS_BY_KIND[kind]
+    if (maxPixels && info.width * info.height > maxPixels) {
+      return { ok: false, status: 400, error: 'La imagen tiene demasiados píxeles para este tipo de archivo.' }
+    }
+    return { ok: true, mime: info.mime, width: info.width, height: info.height }
+  }
+
+  const head = new TextDecoder().decode(bytes.subarray(0, Math.min(bytes.length, 2048))).toLowerCase()
+  if (!head.includes('<svg')) return { ok: false, status: 415, error: UNSUPPORTED }
+  if (kind === 'print') return { ok: false, status: 415, error: 'El archivo de impresión debe ser PNG.' }
+  if (kind === 'preview') return { ok: false, status: 415, error: 'La vista previa debe ser PNG, JPG o WebP.' }
+  const svg = checkSvg(bytes)
+  if (!svg.ok) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'El SVG contiene elementos no permitidos (scripts, enlaces externos o eventos). Expórtalo como SVG simple o súbelo como PNG.',
+    }
+  }
+  return { ok: true, mime: 'image/svg+xml', width: null, height: null }
 }
 
 export async function saveFile(input: {
@@ -110,6 +139,33 @@ export async function getFileMetas(ids: string[]): Promise<FileMeta[]> {
   }))
 }
 
+/**
+ * Dimensiones (px) de archivos PNG ya guardados, leídas de su cabecera IHDR sin cargar el archivo entero.
+ * Los ids que no existen o no son PNG no aparecen en el resultado.
+ */
+export async function getPngSizes(ids: string[]): Promise<Map<string, { width: number; height: number }>> {
+  const out = new Map<string, { width: number; height: number }>()
+  if (ids.length === 0) return out
+  const db = await getDb()
+  const marks = ids.map(() => '?').join(',')
+  const res = await db.execute({
+    sql: `SELECT id, substr(data, 1, 33) AS head FROM files WHERE mime = 'image/png' AND id IN (${marks})`,
+    args: ids,
+  })
+  for (const r of res.rows) {
+    const size = readPngHeader(toBytes(r.head))
+    if (size) out.set(String(r.id), size)
+  }
+  return out
+}
+
+/** Bytes de archivos subidos que aún no pertenecen a ningún pedido ni presupuesto. */
+export async function unattachedBytes(): Promise<number> {
+  const db = await getDb()
+  const res = await db.execute(`SELECT COALESCE(SUM(size), 0) AS total FROM files WHERE order_id IS NULL AND quote_id IS NULL`)
+  return Number(res.rows[0]?.total ?? 0)
+}
+
 /** Asocia archivos a un pedido o presupuesto para que no se limpien como huérfanos. */
 export async function attachFiles(target: { orderId?: string; quoteId?: string }, ids: string[]): Promise<void> {
   if (ids.length === 0) return
@@ -122,7 +178,7 @@ export async function attachFiles(target: { orderId?: string; quoteId?: string }
 }
 
 /** Borra archivos que nunca llegaron a un pedido/presupuesto (carritos abandonados). */
-export async function purgeOrphanFiles(maxAgeHours = 24 * 14): Promise<number> {
+export async function purgeOrphanFiles(maxAgeHours = site.uploads.orphanRetentionDays * 24): Promise<number> {
   const db = await getDb()
   const cutoff = new Date(Date.now() - maxAgeHours * 3600_000).toISOString()
   const res = await db.execute({

@@ -3,6 +3,7 @@
  * (que sea una fecha real y no esté en el pasado). Lo comparten el formulario (cliente) y /api/quotes (servidor).
  */
 import { z } from 'zod'
+import './zod-es'
 import { QUOTE_PRODUCT_OPTIONS, quoteRequestSchema } from './validators'
 
 export type QuoteProduct = (typeof QUOTE_PRODUCT_OPTIONS)[number]

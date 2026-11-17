@@ -46,7 +46,7 @@ Sin configurar nada, en desarrollo:
 - El panel está en `/admin` con la contraseña de desarrollo **`admin-demo`**.
 - Si no hay credenciales de PayPal, el checkout funciona en **modo demostración** (pago simulado, claramente
   señalado como demostración en la web y en los emails).
-- Si no hay SMTP, los emails **se imprimen en la consola del servidor**.
+- Si no hay SMTP, en desarrollo los emails **se imprimen en la consola del servidor**; en producción no se envían ni se registran.
 
 Para ver el panel con datos de ejemplo:
 
@@ -65,12 +65,12 @@ Todas están documentadas en `.env.example`.
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | URL pública (sin barra final). Se usa en emails, sitemap y metadatos |
 | `DATABASE_URL`, `DATABASE_AUTH_TOKEN` | `file:./data/pieza-unica.db` en local; una base [Turso](https://turso.tech) (`libsql://…`) en producción |
-| `ADMIN_PASSWORD` | Contraseña del panel (mínimo 12 caracteres en producción) |
+| `ADMIN_PASSWORD` | Contraseña del panel (en producción: mínimo 12 caracteres y no trivial; si no, el panel queda desactivado) |
 | `SESSION_SECRET` | Firma de la sesión del panel (≥ 32 caracteres: `openssl rand -base64 48`) |
 | `PAYPAL_ENV`, `NEXT_PUBLIC_PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` | PayPal (`sandbox` o `live`) |
 | `ALLOW_DEMO_PAYMENTS` | `true` permite el pago simulado también en producción. **No activar con clientes reales** |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `ADMIN_NOTIFY_EMAIL` | Email saliente y dirección que recibe los avisos de pedidos y presupuestos |
-| `TRUSTED_PROXY_HOPS` | Número de proxies propios delante de la app, para detectar la IP real en los límites de peticiones (por defecto 1; 0 = sin proxy) |
+| `TRUSTED_PROXY_HOPS` | Número de proxies propios delante de la app, para detectar la IP real en los límites de peticiones (por defecto 1; 0 = sin proxy). **Defínelo explícitamente en producción**: un valor erróneo permite saltarse los límites por IP |
 
 ## Cómo salir a producción
 
@@ -82,13 +82,23 @@ Todas están documentadas en `.env.example`.
 3. **PayPal.** Crea una app en el [panel de desarrolladores de PayPal](https://developer.paypal.com/dashboard/applications)
    (primero `sandbox`), rellena `NEXT_PUBLIC_PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET`. Añade un webhook a
    `https://TU-DOMINIO/api/paypal/webhook` con los eventos de captura de pago y reembolso, y copia su id en
-   `PAYPAL_WEBHOOK_ID`. Haz un pedido de prueba en sandbox antes de pasar a `live`.
+   `PAYPAL_WEBHOOK_ID` (en producción es obligatorio: sin él el webhook se rechaza). Haz un pedido de prueba en
+   sandbox antes de pasar a `live`.
 4. **Email.** Rellena `SMTP_*`, `MAIL_FROM` (con un dominio verificado, SPF y DKIM) y `ADMIN_NOTIFY_EMAIL`.
 5. **Dominio.** Fija `NEXT_PUBLIC_SITE_URL` al dominio definitivo.
-6. **Proxy.** Ajusta `TRUSTED_PROXY_HOPS` al número de proxies que tienes delante.
+6. **Proxy.** Ajusta `TRUSTED_PROXY_HOPS` al número de proxies que tienes delante. Si tu hosting o proxy permite
+   limitar el tamaño de las peticiones (`client_max_body_size` en Nginx, límite de cuerpo en Vercel), fíjalo en
+   unos 15 MB: la app ya corta los cuerpos que se pasan de tamaño, pero un tope delante la protege mejor.
+7. **Arranque.** Al arrancar en producción el servidor escribe en el registro los problemas de configuración que
+   detecta (contraseña o secreto débiles, `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin configurar…). Léelo.
 
-Los límites de peticiones (subidas, checkout, formularios, login) viven en memoria de cada instancia. Con varias
-instancias conviene sustituirlos por un almacén compartido (Redis/Upstash).
+Los límites de peticiones de subidas, checkout y formularios viven en memoria de cada instancia; con varias
+instancias conviene sustituirlos por un almacén compartido (Redis/Upstash). El límite de intentos de acceso al panel
+(5 fallos por IP y 30 en total cada 15 minutos) se guarda en la base de datos y vale para todas las instancias: si
+alguien está probando contraseñas, el panel responde «demasiados intentos» a todo el mundo durante 15 minutos.
+
+La app limpia sola, como mucho una vez por hora, los archivos subidos que no llegaron a un pedido (14 días) y los
+pedidos que nunca se pagaron, con sus datos y archivos (30 días); los plazos están en `src/config/site.ts`.
 
 ## Antes de publicar: lo que tienes que completar o decidir
 
@@ -132,11 +142,18 @@ Decisiones técnicas que conviene conocer:
   **vuelve a calcular todo** al crear el pedido: nunca se acepta un importe del cliente.
 - El editor genera, al añadir al carrito, una vista previa por vista y un **PNG transparente a 300 dpi por zona** de
   impresión; el panel permite descargarlos para producción.
-- Las subidas se validan por *magic bytes* (no por la extensión ni el tipo declarado), se rechazan SVG con contenido
-  activo y los archivos se sirven con cabeceras restrictivas (`nosniff`, CSP *sandbox*).
+- Las subidas se validan por su **estructura** (PNG, JPEG y WebP completos y con dimensiones razonables; no por la
+  extensión ni el tipo declarado). Los SVG se aceptan solo si pasan una **lista blanca** de elementos y atributos
+  (sin scripts, enlaces externos ni `@import`), se sirven siempre como descarga y con cabeceras restrictivas
+  (`nosniff`, CSP *sandbox*). Los cuerpos de las peticiones se leen con un tope real de bytes.
+- El servidor comprueba que el **PNG de impresión mide lo que se cobra** (la caja envolvente del diseño a 300 ppp);
+  si no, rechaza la línea: así no se puede declarar un estampado pequeño e imprimir uno grande.
+- Cabeceras de seguridad en `next.config.ts`: CSP (con `'unsafe-inline'` en scripts porque las páginas son estáticas
+  y no usan *nonce*), HSTS y COOP. Si cambias el SDK de PayPal o añades servicios externos, ajusta la CSP.
 - Los pedidos tienen un token público para el enlace de seguimiento (`/pedido/<id>?t=<token>`); la consulta manual
   pide número de pedido y email.
-- El panel usa una cookie de sesión firmada (JWT, 12 h, `HttpOnly`) y limita los intentos de acceso fallidos.
+- El panel usa una cookie de sesión firmada (JWT, 12 h, `HttpOnly`, prefijo `__Host-` en producción) y limita los
+  intentos de acceso fallidos. Cerrar sesión revoca todas las sesiones abiertas.
 
 ## Licencia
 

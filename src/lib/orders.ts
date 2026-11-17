@@ -5,6 +5,7 @@
 import 'server-only'
 import { timingSafeEqual } from 'node:crypto'
 import type { InStatement } from '@libsql/client'
+import { site } from '@/config/site'
 import type { ProductId } from '@/config/products'
 import { getDb, nowIso } from './db'
 import { attachFiles } from './files'
@@ -344,6 +345,40 @@ export async function markPaymentFailed(orderId: string, note: string): Promise<
     ],
     'write',
   )
+}
+
+/**
+ * Elimina los pedidos que nunca llegaron a pagarse (pendientes de pago desde hace `maxAgeDays` días) con su
+ * historial y sus archivos, salvo los archivos que también use otro pedido. Devuelve cuántos pedidos borró.
+ * Así no se conservan indefinidamente datos personales de compras que no se completaron.
+ */
+export async function purgeUnpaidOrders(maxAgeDays = site.uploads.unpaidOrderRetentionDays, batch = 200): Promise<number> {
+  const db = await getDb()
+  const cutoff = new Date(Date.now() - maxAgeDays * 86_400_000).toISOString()
+  const res = await db.execute({
+    sql: `SELECT id FROM orders WHERE status = 'pending_payment' AND created_at < ? ORDER BY created_at LIMIT ?`,
+    args: [cutoff, batch],
+  })
+  const ids = res.rows.map((r) => String(r.id))
+  if (ids.length === 0) return 0
+  const marks = ids.map(() => '?').join(',')
+  // Solo los que siguen sin pagar en el momento de borrar (por si un pago llegara justo ahora).
+  const eligible = `SELECT id FROM orders WHERE id IN (${marks}) AND status = 'pending_payment'`
+  await db.batch(
+    [
+      {
+        // Un archivo reutilizado por otro pedido (p. ej. un reintento de pago) se conserva.
+        sql: `DELETE FROM files WHERE order_id IN (${eligible}) AND NOT EXISTS (
+                SELECT 1 FROM orders o WHERE o.id NOT IN (${marks}) AND instr(o.items_json, files.id) > 0
+              )`,
+        args: [...ids, ...ids],
+      },
+      { sql: `DELETE FROM order_events WHERE order_id IN (${eligible})`, args: ids },
+      { sql: `DELETE FROM orders WHERE id IN (${marks}) AND status = 'pending_payment'`, args: ids },
+    ],
+    'write',
+  )
+  return ids.length
 }
 
 /* ───────────── Gestión (panel de administración) ───────────── */

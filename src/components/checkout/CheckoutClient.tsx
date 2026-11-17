@@ -128,7 +128,7 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
   const badLines = priced.filter((p) => p.error || failure?.lineIds?.includes(p.line.id))
 
   return (
-    <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_400px]">
+    <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
       <div className="lg:order-2">
         <CheckoutSummary priced={priced} totals={totals} postalCodeKnown={postalCodeKnown} />
         <p className="mt-4 flex items-center justify-center gap-2 text-center text-sm text-ink-soft">

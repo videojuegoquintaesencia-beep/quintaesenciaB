@@ -63,9 +63,14 @@ export interface MailResult {
 export async function sendMail(input: MailInput): Promise<MailResult> {
   const t = transporter()
   if (!t) {
-    console.log(
-      `\n[email simulado] Para: ${input.to}\nAsunto: ${input.subject}\n${input.text}\n───────────────────────────\n`,
-    )
+    if (process.env.NODE_ENV === 'production') {
+      // En producción el cuerpo lleva datos personales y enlaces con token de seguimiento: no se escribe en el log.
+      console.warn(`[email no enviado] SMTP_HOST no está configurado. Asunto: ${input.subject}`)
+    } else {
+      console.log(
+        `\n[email simulado] Para: ${input.to}\nAsunto: ${input.subject}\n${input.text}\n───────────────────────────\n`,
+      )
+    }
     return { ok: true, simulated: true }
   }
   try {
@@ -79,9 +84,11 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
     })
     return { ok: true }
   } catch (err) {
+    // El mensaje del servidor SMTP puede incluir direcciones de correo: en producción solo se registra el código.
+    const code = (err as { code?: string; responseCode?: number } | null)?.code ?? (err as { responseCode?: number } | null)?.responseCode
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[email] Error al enviar:', message)
-    return { ok: false, error: message }
+    console.error('[email] Error al enviar:', process.env.NODE_ENV === 'production' ? `código ${code ?? 'desconocido'}` : message)
+    return { ok: false, error: process.env.NODE_ENV === 'production' ? `Error SMTP (${code ?? 'desconocido'})` : message }
   }
 }
 

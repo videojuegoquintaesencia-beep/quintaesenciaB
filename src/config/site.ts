@@ -69,6 +69,12 @@ export const site = {
   uploads: {
     maxArtworkBytes: 12 * 1024 * 1024,
     maxGeneratedBytes: 8 * 1024 * 1024,
+    /** Tope global de archivos subidos que aún no pertenecen a ningún pedido ni presupuesto (protege la base de datos). */
+    maxPendingBytes: 4 * 1024 * 1024 * 1024,
+    /** Días que se conservan los archivos subidos que nunca llegaron a un pedido o presupuesto. */
+    orphanRetentionDays: 14,
+    /** Días tras los que se eliminan los pedidos que no llegaron a pagarse (y sus archivos). */
+    unpaidOrderRetentionDays: 30,
     acceptedArtworkTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'] as const,
   },
 } as const

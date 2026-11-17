@@ -156,8 +156,12 @@ const SECTIONS: LegalSection[] = [
           plazos de prescripción de posibles responsabilidades.
         </li>
         <li>
-          <strong>Archivos subidos que no llegan a un pedido o a un presupuesto:</strong> se borran de forma periódica transcurridas
-          unas dos semanas.
+          <strong>Pedidos que no llegan a pagarse:</strong> se eliminan, con sus archivos, transcurridos {site.uploads.unpaidOrderRetentionDays}{' '}
+          días.
+        </li>
+        <li>
+          <strong>Archivos subidos que no llegan a un pedido o a un presupuesto:</strong> se borran de forma automática transcurridos{' '}
+          {site.uploads.orphanRetentionDays} días.
         </li>
         <li>
           <strong>Carrito y borradores de diseño:</strong> se guardan solo en tu navegador, y los controlas tú (consulta la{' '}

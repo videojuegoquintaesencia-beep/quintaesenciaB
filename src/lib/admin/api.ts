@@ -1,6 +1,7 @@
 /** Utilidades comunes de las rutas /api/admin (solo servidor). */
 import 'server-only'
 import type { z } from 'zod'
+import { readBodyJson } from '@/lib/http-body'
 import { firstZodError } from '@/lib/validators'
 import { isValidId } from '@/lib/ids'
 
@@ -14,14 +15,12 @@ export type Parsed<T> = { ok: true; data: T } | { ok: false; response: Response 
 
 /** Lee el cuerpo JSON de la petición y lo valida con zod. Nunca lanza. */
 export async function parseJsonBody<S extends z.ZodType>(req: Request, schema: S): Promise<Parsed<z.infer<S>>> {
-  const length = Number(req.headers.get('content-length') ?? 0)
-  if (length > MAX_BODY_BYTES) return { ok: false, response: jsonError('Petición demasiado grande', 413) }
-  let raw: unknown
-  try {
-    raw = await req.json()
-  } catch {
-    return { ok: false, response: jsonError('Datos no válidos', 400) }
+  // Tope real de bytes: no basta con mirar Content-Length (un cuerpo "chunked" no lo trae).
+  const read = await readBodyJson(req, MAX_BODY_BYTES)
+  if (!read.ok) {
+    return { ok: false, response: read.status === 413 ? jsonError('Petición demasiado grande', 413) : jsonError('Datos no válidos', 400) }
   }
+  const raw = read.value
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { ok: false, response: jsonError('Datos no válidos', 400) }
   const result = schema.safeParse(raw)
   if (!result.success) return { ok: false, response: jsonError(firstZodError(result.error), 400) }

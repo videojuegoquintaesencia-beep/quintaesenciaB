@@ -45,7 +45,7 @@ const COLUMNS: { title: string; links: { href: string; label: string }[]; note?:
 ]
 
 const linkClass =
-  'inline-flex min-h-8 items-center rounded-md text-cream/85 underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow'
+  'inline-flex min-h-8 pointer-coarse:min-h-11 items-center rounded-md text-cream/85 underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow'
 
 export function SiteFooter() {
   const { contact, shipping } = site
@@ -77,7 +77,7 @@ export function SiteFooter() {
                   <a
                     href={link.href}
                     {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                    className="inline-flex min-h-8 items-center gap-2.5 rounded-md font-bold underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow"
+                    className="inline-flex min-h-8 pointer-coarse:min-h-11 items-center gap-2.5 rounded-md font-bold underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow"
                   >
                     {link.key === 'email' && <Mail aria-hidden="true" size={18} />}
                     {link.key === 'phone' && <Phone aria-hidden="true" size={18} />}
@@ -105,7 +105,7 @@ export function SiteFooter() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-8 items-center rounded-md font-bold underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow"
+                    className="inline-flex min-h-8 pointer-coarse:min-h-11 items-center rounded-md font-bold underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow"
                   >
                     {link.text}
                     <span className="sr-only"> (se abre en una pestaña nueva)</span>

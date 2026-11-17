@@ -186,6 +186,12 @@
     font-size: 0.95rem;
     box-shadow: var(--shadow-pop-sm);
   }
+  /* En pantallas táctiles los botones pequeños llegan a los 44 px recomendados. */
+  @media (pointer: coarse) {
+    .btn-sm {
+      min-height: 2.75rem;
+    }
+  }
   .btn-lg {
     padding: 0.9rem 2rem;
     min-height: 3.4rem;
@@ -256,7 +262,7 @@
   }
   .input::placeholder,
   .textarea::placeholder {
-    color: #8a84a8;
+    color: #6b6590;
   }
   .input:focus,
   .select:focus,

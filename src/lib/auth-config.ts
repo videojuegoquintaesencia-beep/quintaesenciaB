@@ -1,0 +1,73 @@
+/**
+ * Comprobación de la configuración de acceso al panel. Sin dependencias de servidor, así que la pueden
+ * usar `auth-token.ts` (proxy.ts), `auth.ts` y `instrumentation.ts`.
+ *
+ * En producción exigimos secretos razonables: ADMIN_PASSWORD de al menos 12 caracteres y SESSION_SECRET de al
+ * menos 32, y ninguno formado por muy pocos caracteres distintos (p. ej. "xxxxxxxxxxxx"). En desarrollo no se
+ * exige nada (hay valores por defecto para trabajar).
+ */
+
+export const MIN_ADMIN_PASSWORD_LENGTH = 12
+export const MIN_SESSION_SECRET_LENGTH = 32
+
+const isProduction = () => process.env.NODE_ENV === 'production'
+
+/** true si el valor tiene tan pocos caracteres distintos que es trivial ("aaaaaaaaaaaa", "abababababab"). */
+export function isTrivialSecret(value: string): boolean {
+  return new Set(value).size < 5
+}
+
+/** Motivo por el que ADMIN_PASSWORD no vale en producción, o null si es aceptable (o no es producción). */
+export function adminPasswordProblem(): string | null {
+  if (!isProduction()) return null
+  const pw = process.env.ADMIN_PASSWORD ?? ''
+  if (pw.length === 0) return 'ADMIN_PASSWORD no está definido: el panel /admin queda inaccesible.'
+  if (pw.length < MIN_ADMIN_PASSWORD_LENGTH)
+    return `ADMIN_PASSWORD es demasiado corto (mínimo ${MIN_ADMIN_PASSWORD_LENGTH} caracteres): el panel /admin queda inaccesible.`
+  if (isTrivialSecret(pw)) return 'ADMIN_PASSWORD es demasiado simple (muy pocos caracteres distintos): el panel /admin queda inaccesible.'
+  return null
+}
+
+/** Motivo por el que SESSION_SECRET no vale en producción, o null si es aceptable (o no es producción). */
+export function sessionSecretProblem(): string | null {
+  if (!isProduction()) return null
+  const secret = process.env.SESSION_SECRET ?? ''
+  if (secret.length === 0) return 'SESSION_SECRET no está definido: nadie puede iniciar sesión en /admin.'
+  if (secret.length < MIN_SESSION_SECRET_LENGTH)
+    return `SESSION_SECRET es demasiado corto (mínimo ${MIN_SESSION_SECRET_LENGTH} caracteres): nadie puede iniciar sesión en /admin.`
+  if (isTrivialSecret(secret)) return 'SESSION_SECRET es demasiado simple (muy pocos caracteres distintos): nadie puede iniciar sesión en /admin.'
+  return null
+}
+
+/** Problemas de configuración que impiden entrar al panel (vacío si todo está bien). */
+export function adminAuthProblems(): string[] {
+  return [adminPasswordProblem(), sessionSecretProblem()].filter((p): p is string => p !== null)
+}
+
+/** Avisos de configuración de producción para mostrar al arrancar el servidor. */
+export function productionConfigIssues(): { level: 'error' | 'warn'; message: string }[] {
+  if (!isProduction()) return []
+  const issues: { level: 'error' | 'warn'; message: string }[] = adminAuthProblems().map((message) => ({ level: 'error', message }))
+  const env = process.env
+  if (env.TRUSTED_PROXY_HOPS === undefined || env.TRUSTED_PROXY_HOPS.trim() === '') {
+    issues.push({
+      level: 'warn',
+      message:
+        'TRUSTED_PROXY_HOPS no está definido (se asume 1). Indica cuántos proxies tuyos hay delante de la app (0 si ninguno) o los límites de peticiones por IP se podrán saltar.',
+    })
+  }
+  const paypalConfigured = !!env.NEXT_PUBLIC_PAYPAL_CLIENT_ID && !!env.PAYPAL_CLIENT_SECRET
+  if (paypalConfigured && !(env.PAYPAL_WEBHOOK_ID ?? '').trim()) {
+    issues.push({ level: 'warn', message: 'PAYPAL_WEBHOOK_ID no está definido: el webhook de PayPal se rechaza (solo funcionará la captura desde el navegador).' })
+  }
+  if (env.ALLOW_DEMO_PAYMENTS === 'true') {
+    issues.push({ level: 'error', message: 'ALLOW_DEMO_PAYMENTS=true: se aceptan pagos simulados. NO lo uses con clientes reales.' })
+  }
+  if (!env.SMTP_HOST) {
+    issues.push({ level: 'warn', message: 'SMTP_HOST no está definido: los emails (confirmaciones, avisos) NO se envían a nadie.' })
+  }
+  if ((env.DATABASE_URL ?? 'file:').startsWith('file:')) {
+    issues.push({ level: 'warn', message: 'DATABASE_URL apunta a un archivo local: en hosting sin disco persistente (p. ej. Vercel) se perderán los datos. Usa Turso.' })
+  }
+  return issues
+}

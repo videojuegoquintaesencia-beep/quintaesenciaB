@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Group, Image as KImage, Layer as KLayer, Line, Rect, Stage, Text, Transformer } from 'react-konva'
 import type Konva from 'konva'
-import { getColor, getProduct, getView, type PrintArea } from '@/config/products'
+import { getColor, getProduct, getView, isDarkSurface, type PrintArea } from '@/config/products'
 import { formatNumber } from '@/lib/format'
 import { MIN_LAYER_CM } from '@/lib/editor/constants'
 import { areaOrigin, snapToArea } from '@/lib/editor/geometry'
@@ -13,6 +13,7 @@ import { useMockupImage, type ImageMap } from './useImages'
 const INK = '#1b1340'
 const VIOLET = '#7b5cff'
 const PINK = '#ff4f9a'
+const PAPER = '#ffffff'
 
 function useIsCoarsePointer(): boolean {
   const [coarse, setCoarse] = useState(false)
@@ -39,6 +40,7 @@ export function EditorCanvas({ images }: { images: ImageMap }) {
   const view = product ? getView(product, viewId) : undefined
   const color = product ? getColor(product, design.colorId) : undefined
   const mockup = useMockupImage(productId, viewId, color?.hex ?? '#ffffff')
+  const dark = product ? isDarkSurface(product, design.colorId) : false
   const coarse = useIsCoarsePointer()
 
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -85,6 +87,7 @@ export function EditorCanvas({ images }: { images: ImageMap }) {
                   ppc={ppc}
                   scale={scale}
                   active={area.id === activeArea.id}
+                  dark={dark}
                   images={images}
                   guides={guides}
                   setGuides={setGuides}
@@ -116,13 +119,15 @@ interface AreaViewProps {
   ppc: number
   scale: number
   active: boolean
+  /** Prenda oscura: guías y rótulos en claro con contorno oscuro para que se vean. */
+  dark: boolean
   images: ImageMap
   guides: { x: number[]; y: number[] }
   setGuides: (g: { x: number[]; y: number[] }) => void
   gesture: React.MutableRefObject<string | null>
 }
 
-function AreaView({ area, ppc, scale, active, images, guides, setGuides, gesture }: AreaViewProps) {
+function AreaView({ area, ppc, scale, active, dark, images, guides, setGuides, gesture }: AreaViewProps) {
   const layers = useEditor((s) => s.design.areas[area.id]?.layers)
   const origin = useMemo(() => areaOrigin(area, ppc), [area, ppc])
   const w = area.widthCm * ppc
@@ -199,11 +204,15 @@ function AreaView({ area, ppc, scale, active, images, guides, setGuides, gesture
           </Group>
         </>
       )}
+      {dark && (
+        <Rect width={w} height={h} stroke={INK} strokeWidth={active ? 4 : 3} opacity={0.55} dash={[8, 6]} strokeScaleEnabled={false} listening={false} />
+      )}
       <Rect
         width={w}
         height={h}
-        stroke={active ? INK : 'rgba(27,19,64,0.45)'}
+        stroke={dark ? PAPER : active ? INK : 'rgba(27,19,64,0.45)'}
         strokeWidth={active ? 2 : 1.5}
+        opacity={dark && !active ? 0.75 : 1}
         dash={[8, 6]}
         strokeScaleEnabled={false}
         listening={false}
@@ -215,7 +224,9 @@ function AreaView({ area, ppc, scale, active, images, guides, setGuides, gesture
         fontSize={labelSize}
         fontFamily='"Nunito Variable", "Nunito", sans-serif'
         fontStyle="bold"
-        fill={active ? INK : 'rgba(27,19,64,0.55)'}
+        fill={dark ? PAPER : active ? INK : 'rgba(27,19,64,0.55)'}
+        opacity={dark && !active ? 0.8 : 1}
+        {...(dark ? { stroke: INK, strokeWidth: 3 / scale, fillAfterStrokeEnabled: true, lineJoin: 'round' as const } : {})}
         listening={false}
       />
       {active && guides.x.map((gx) => <Line key={`gx${gx}`} points={[gx * ppc, -8, gx * ppc, h + 8]} stroke={PINK} strokeWidth={1.5} strokeScaleEnabled={false} dash={[6, 4]} listening={false} />)}

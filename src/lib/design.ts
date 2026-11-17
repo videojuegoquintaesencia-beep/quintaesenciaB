@@ -6,6 +6,7 @@
  * El mismo modelo lo usan el editor, el cálculo de precio (cliente y servidor) y el panel de pedidos.
  */
 import { z } from 'zod'
+import './zod-es'
 import { getArea, getColor, getProduct, type PrintArea, type ProductId } from '@/config/products'
 
 /* ───────────── Tipografías disponibles en el editor ───────────── */
@@ -36,9 +37,9 @@ const baseLayer = z.object({
   /** Centro de la capa, en cm desde la esquina superior izquierda de la zona. */
   x: cm.min(-100).max(200),
   y: cm.min(-100).max(200),
-  /** Tamaño sin rotar, en cm. */
-  width: cm.positive().max(300),
-  height: cm.positive().max(300),
+  /** Tamaño sin rotar, en cm (mínimo 1 mm: una capa microscópica no es un diseño; el editor nunca baja de 3 mm). */
+  width: cm.min(0.1).max(300),
+  height: cm.min(0.1).max(300),
   /** Grados, sentido horario. */
   rotation: cm.min(-720).max(720),
   opacity: z.number().min(0).max(1).optional(),

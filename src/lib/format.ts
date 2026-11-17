@@ -23,8 +23,12 @@ export function formatNumber(value: number): string {
   return num1.format(value)
 }
 
-const dateFmt = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+/** Las fechas se muestran siempre en la hora de España peninsular, sea cual sea la zona del servidor. */
+export const SPAIN_TIME_ZONE = 'Europe/Madrid'
+
+const dateFmt = new Intl.DateTimeFormat('es-ES', { timeZone: SPAIN_TIME_ZONE, day: '2-digit', month: 'short', year: 'numeric' })
 const dateTimeFmt = new Intl.DateTimeFormat('es-ES', {
+  timeZone: SPAIN_TIME_ZONE,
   day: '2-digit',
   month: 'short',
   year: 'numeric',
