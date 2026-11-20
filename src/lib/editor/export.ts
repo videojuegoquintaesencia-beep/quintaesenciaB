@@ -32,8 +32,8 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: 'image/png' | 'image/webp
  */
 const PREVIEW_WEBP_QUALITY = 0.9
 
-function rasterize(root: Konva.Group, width: number, height: number): HTMLCanvasElement {
-  const canvas = root.toCanvas({ x: 0, y: 0, width, height, pixelRatio: 1 }) as HTMLCanvasElement
+function rasterize(root: Konva.Group, width: number, height: number, pixelRatio = 1): HTMLCanvasElement {
+  const canvas = root.toCanvas({ x: 0, y: 0, width, height, pixelRatio }) as HTMLCanvasElement
   root.destroy()
   return canvas
 }
@@ -47,16 +47,32 @@ function loadMockup(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Imagen del producto (con el arte aplicado y recortado a cada zona) de una vista. */
-export async function renderPreview(design: Design, product: Product, view: ProductView, images: ImageMap): Promise<Blob> {
+export interface ViewRenderOptions {
+  /** Ancho del dibujo en píxeles CSS (por defecto, el de las vistas previas). */
+  widthPx?: number
+  /** Densidad de píxeles del canvas (2 para miniaturas nítidas en pantallas retina). */
+  pixelRatio?: number
+  /** Recorte de la vista, en unidades de su viewBox (por defecto, la vista entera). */
+  crop?: { x: number; y: number; width: number; height: number }
+}
+
+/** Canvas con una vista del producto y el arte aplicado (recortado a cada zona). Lo comparten las vistas previas y las miniaturas de plantillas. */
+export async function renderViewCanvas(
+  design: Design,
+  product: Product,
+  view: ProductView,
+  images: ImageMap,
+  { widthPx = PREVIEW_WIDTH_PX, pixelRatio = 1, crop }: ViewRenderOptions = {},
+): Promise<HTMLCanvasElement> {
   const color = getColor(product, design.colorId)
   if (!color) throw new Error('Color no disponible.')
   const mockup = await loadMockup(mockupDataUrl({ productId: product.id, viewId: view.id, colorHex: color.hex, guides: false }))
-  const scale = PREVIEW_WIDTH_PX / view.viewBox.width
-  const width = PREVIEW_WIDTH_PX
-  const height = Math.round(view.viewBox.height * scale)
+  const frame = crop ?? { x: 0, y: 0, width: view.viewBox.width, height: view.viewBox.height }
+  const scale = widthPx / frame.width
+  const width = widthPx
+  const height = Math.round(frame.height * scale)
 
-  const root = new Konva.Group({ scaleX: scale, scaleY: scale })
+  const root = new Konva.Group({ scaleX: scale, scaleY: scale, x: -frame.x * scale, y: -frame.y * scale })
   root.add(new Konva.Image({ image: mockup, x: 0, y: 0, width: view.viewBox.width, height: view.viewBox.height }))
   for (const area of view.areas) {
     const layers = design.areas[area.id]?.layers ?? []
@@ -76,7 +92,12 @@ export async function renderPreview(design: Design, product: Product, view: Prod
     }
     root.add(holder)
   }
-  return canvasToBlob(rasterize(root, width, height), 'image/webp', PREVIEW_WEBP_QUALITY)
+  return rasterize(root, width, height, pixelRatio)
+}
+
+/** Imagen del producto (con el arte aplicado y recortado a cada zona) de una vista. */
+export async function renderPreview(design: Design, product: Product, view: ProductView, images: ImageMap): Promise<Blob> {
+  return canvasToBlob(await renderViewCanvas(design, product, view, images), 'image/webp', PREVIEW_WEBP_QUALITY)
 }
 
 /** Fracción del límite de subida a la que apunta el editor al bajar los ppp (el peso exacto del PNG no se conoce de antemano). */

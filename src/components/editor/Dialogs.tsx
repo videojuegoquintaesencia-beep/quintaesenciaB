@@ -2,6 +2,9 @@
 import Link from 'next/link'
 import { useId } from 'react'
 import { CircleCheck, LoaderCircle, TriangleAlert } from 'lucide-react'
+import { getArea, getProduct } from '@/config/products'
+import { useTemplateFlow } from '@/lib/editor/apply-template'
+import { useEditor } from '@/lib/editor/store'
 import { Modal } from './Modal'
 import type { CartState } from './useAddToCart'
 
@@ -84,6 +87,44 @@ export function ConfirmStartOver({ open, onClose, onConfirm }: { open: boolean; 
           Sí, empezar de nuevo
         </button>
         <button type="button" className="btn btn-sm" onClick={onClose}>Cancelar</button>
+      </div>
+    </Modal>
+  )
+}
+
+/** La zona activa ya tiene elementos: ¿la plantilla los sustituye o se pone encima? */
+export function ConfirmApplyTemplate() {
+  const titleId = useId()
+  const pending = useTemplateFlow((s) => s.pending)
+  const count = useEditor((s) => s.design.areas[s.areaId]?.layers.length ?? 0)
+  const areaLabel = useEditor((s) => {
+    const product = getProduct(s.productId)
+    return (product && getArea(product, s.areaId)?.label) ?? 'actual'
+  })
+  const flow = useTemplateFlow.getState
+  // Se cierra el diálogo antes de aplicar: así el foco vuelve a su sitio y después pasa al campo de texto.
+  const choose = (mode: 'replace' | 'add') => {
+    if (!pending) return
+    flow().cancel()
+    void flow().apply(pending, mode)
+  }
+
+  return (
+    <Modal open={!!pending} onClose={() => flow().cancel()} title={`¿Aplicar «${pending?.name ?? ''}»?`} titleId={titleId}>
+      <p className="mb-4 text-ink-soft">
+        La zona «{areaLabel}» ya tiene {count === 1 ? 'un elemento' : `${count} elementos`}. Puedes sustituirlos por la plantilla o añadirla encima;
+        el resto de zonas no cambia y siempre podrás deshacerlo.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => choose('replace')}>
+          Sustituir mi diseño
+        </button>
+        <button type="button" className="btn btn-sm" onClick={() => choose('add')}>
+          Añadir encima
+        </button>
+        <button type="button" className="btn btn-sm" onClick={() => flow().cancel()}>
+          Cancelar
+        </button>
       </div>
     </Modal>
   )
