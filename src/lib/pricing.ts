@@ -3,16 +3,16 @@
  * y el servidor lo vuelve a calcular al crear el pedido (el precio del cliente NUNCA se acepta tal cual).
  * Todos los importes en céntimos de euro, IVA incluido.
  */
-import { site } from '@/config/site'
-import {
-  QUANTITY_DISCOUNTS,
-  getArea,
-  getColor,
-  getProduct,
-  type PrintTier,
-  type Product,
-} from '@/config/products'
+import { getArea, getColor, type PrintTier, type Product, type QuantityDiscount } from '@/config/products'
 import { areaUsage, parseDesign, type Design } from './design'
+import { DEFAULT_CATALOG, type Catalog, type ShippingSettings } from './settings-schema'
+
+/**
+ * Las funciones reciben el catálogo efectivo (precios que el panel puede cambiar). Si no se pasa, usan los
+ * precios en código (`DEFAULT_CATALOG`). En el servidor pásalo desde `getCatalog()`; en el navegador llega
+ * por contexto desde la página de servidor.
+ */
+export type ShippingRules = Pick<ShippingSettings, 'flatCents' | 'freeFromCents' | 'balearesExtraCents' | 'excludedPostalPrefixes'>
 
 export interface PrintCharge {
   areaId: string
@@ -62,9 +62,9 @@ export function tierPrice(tiers: PrintTier[] | undefined, usedCm2: number): numb
   return tier.cents
 }
 
-export function quantityDiscountPct(quantity: number): number {
+export function quantityDiscountPct(quantity: number, discounts: readonly QuantityDiscount[] = DEFAULT_CATALOG.quantityDiscounts): number {
   let pct = 0
-  for (const d of QUANTITY_DISCOUNTS) if (quantity >= d.minQty) pct = d.pct
+  for (const d of discounts) if (quantity >= d.minQty) pct = d.pct
   return pct
 }
 
@@ -91,8 +91,8 @@ export function printCharges(product: Product, design: Design): PrintCharge[] {
   return out
 }
 
-export function priceLine(input: LineInput): LinePrice | PriceError {
-  const product = getProduct(input.productId)
+export function priceLine(input: LineInput, catalog: Catalog = DEFAULT_CATALOG): LinePrice | PriceError {
+  const product = catalog.products.find((p) => p.id === input.productId)
   if (!product) return { ok: false, error: 'Producto desconocido.' }
   const color = getColor(product, input.colorId)
   if (!color) return { ok: false, error: 'Color no disponible.' }
@@ -126,7 +126,7 @@ export function priceLine(input: LineInput): LinePrice | PriceError {
   const unitBaseCents = product.basePriceCents + (color.surchargeCents ?? 0)
   const printCents = prints.reduce((n, p) => n + p.cents, 0)
   const grossCents = quantity * (unitBaseCents + printCents) + sizeSurchargeCents
-  const discountPct = quantityDiscountPct(quantity)
+  const discountPct = quantityDiscountPct(quantity, catalog.quantityDiscounts)
   const discountCents = Math.round((grossCents * discountPct) / 100)
   const totalCents = grossCents - discountCents
 
@@ -156,27 +156,27 @@ export function isValidSpanishPostalCode(value: string): boolean {
 }
 
 /** ¿Enviamos a este código postal desde la tienda online? */
-export function isPostalCodeDeliverable(postalCode: string): boolean {
+export function isPostalCodeDeliverable(postalCode: string, rules: ShippingRules = DEFAULT_CATALOG.shipping): boolean {
   const cp = normalizePostalCode(postalCode)
   if (!isValidSpanishPostalCode(cp)) return false
-  return !(site.shipping.excludedPostalPrefixes as readonly string[]).includes(cp.slice(0, 2))
+  return !rules.excludedPostalPrefixes.includes(cp.slice(0, 2))
 }
 
 /** Coste de envío en céntimos; `null` si no se envía a ese código postal. Sin CP, se estima el envío peninsular. */
-export function computeShippingCents(subtotalCents: number, postalCode?: string): number | null {
+export function computeShippingCents(subtotalCents: number, postalCode?: string, rules: ShippingRules = DEFAULT_CATALOG.shipping): number | null {
   const cp = postalCode ? normalizePostalCode(postalCode) : ''
   if (cp) {
-    if (!isPostalCodeDeliverable(cp)) return null
+    if (!isPostalCodeDeliverable(cp, rules)) return null
   }
-  if (subtotalCents >= site.shipping.freeFromCents) return 0
-  let cents: number = site.shipping.flatCents
-  if (cp.startsWith('07')) cents += site.shipping.balearesExtraCents
+  if (subtotalCents >= rules.freeFromCents) return 0
+  let cents: number = rules.flatCents
+  if (cp.startsWith('07')) cents += rules.balearesExtraCents
   return cents
 }
 
 /** Parte del total que corresponde a IVA (los precios ya lo incluyen). */
-export function vatIncludedCents(totalCents: number): number {
-  return Math.round(totalCents - totalCents / (1 + site.vatRate))
+export function vatIncludedCents(totalCents: number, vatRate: number = DEFAULT_CATALOG.vatRate): number {
+  return Math.round(totalCents - totalCents / (1 + vatRate))
 }
 
 export interface CartTotals {
@@ -189,15 +189,15 @@ export interface CartTotals {
   freeShippingRemainingCents: number
 }
 
-export function computeCartTotals(lineTotalsCents: number[], postalCode?: string): CartTotals {
+export function computeCartTotals(lineTotalsCents: number[], postalCode?: string, rules: ShippingRules = DEFAULT_CATALOG.shipping): CartTotals {
   const subtotalCents = lineTotalsCents.reduce((n, c) => n + c, 0)
-  const shippingCents = computeShippingCents(subtotalCents, postalCode)
+  const shippingCents = computeShippingCents(subtotalCents, postalCode, rules)
   const totalCents = subtotalCents + (shippingCents ?? 0)
   return {
     subtotalCents,
     shippingCents,
     totalCents,
     vatCents: vatIncludedCents(totalCents),
-    freeShippingRemainingCents: Math.max(0, site.shipping.freeFromCents - subtotalCents),
+    freeShippingRemainingCents: Math.max(0, rules.freeFromCents - subtotalCents),
   }
 }

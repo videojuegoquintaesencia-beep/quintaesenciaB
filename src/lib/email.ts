@@ -5,6 +5,7 @@
 import 'server-only'
 import nodemailer, { type Transporter } from 'nodemailer'
 import { site } from '@/config/site'
+import { getSettings } from './settings'
 
 export function escapeHtml(value: string): string {
   return value
@@ -21,14 +22,14 @@ export function absoluteUrl(path = '/'): string {
 }
 
 /** Datos del titular para el pie de los emails (art. 10 LSSI-CE): "Razón social · NIF … · Domicilio". */
-export function ownerLine(): string {
-  const { legalName, taxId, registeredAddress } = site.business
+export async function ownerLine(): Promise<string> {
+  const { legalName, taxId, registeredAddress } = (await getSettings()).business
   return `${legalName} · NIF ${taxId} · ${registeredAddress}`
 }
 
 /** Dirección que recibe los avisos internos (pedidos nuevos, presupuestos, mensajes). */
-export function adminNotifyAddress(): string | null {
-  return process.env.ADMIN_NOTIFY_EMAIL || site.contact.email || null
+export async function adminNotifyAddress(): Promise<string | null> {
+  return process.env.ADMIN_NOTIFY_EMAIL || (await getSettings()).contact.email || null
 }
 
 type G = typeof globalThis & { __puMailer?: Transporter | null }
@@ -80,8 +81,9 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
     return { ok: true, simulated: true }
   }
   try {
+    const { contact } = await getSettings()
     await t.sendMail({
-      from: process.env.MAIL_FROM || `${site.name} <${site.contact.email}>`,
+      from: process.env.MAIL_FROM || `${site.name} <${contact.email}>`,
       to: input.to,
       subject: input.subject,
       html: input.html,
@@ -99,13 +101,14 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
 }
 
 /** Plantilla HTML común (maquetación con tablas e CSS en línea para compatibilidad con clientes de correo). */
-export function emailShell(opts: {
+export async function emailShell(opts: {
   title: string
   preheader?: string
   bodyHtml: string
   ctaLabel?: string
   ctaUrl?: string
-}): string {
+}): Promise<string> {
+  const [{ contact }, owner] = await Promise.all([getSettings(), ownerLine()])
   const cta =
     opts.ctaLabel && opts.ctaUrl
       ? `<p style="margin:28px 0 8px"><a href="${escapeHtml(opts.ctaUrl)}" style="display:inline-block;background:#ff4f9a;color:#1b1340;font-weight:800;text-decoration:none;padding:14px 26px;border:2px solid #1b1340;border-radius:999px;box-shadow:3px 3px 0 #1b1340">${escapeHtml(opts.ctaLabel)}</a></p>`
@@ -125,8 +128,8 @@ export function emailShell(opts: {
       ${cta}
     </td></tr>
     <tr><td style="padding:18px 8px;font-size:13px;line-height:1.5;color:#4a4270;text-align:center">
-      ${escapeHtml(site.name)} · ${escapeHtml(site.contact.email)}${site.contact.phone ? ` · ${escapeHtml(site.contact.phone)}` : ''}<br>
-      ${escapeHtml(ownerLine())}<br>
+      ${escapeHtml(site.name)} · ${escapeHtml(contact.email)}${contact.phone ? ` · ${escapeHtml(contact.phone)}` : ''}<br>
+      ${escapeHtml(owner)}<br>
       <a href="${escapeHtml(absoluteUrl('/legal/aviso-legal'))}" style="color:#4a4270">Aviso legal</a> · <a href="${escapeHtml(absoluteUrl('/legal/privacidad'))}" style="color:#4a4270">Privacidad</a><br>
       Recibes este email porque has hecho un pedido o una consulta en ${escapeHtml(site.name)}.
     </td></tr>

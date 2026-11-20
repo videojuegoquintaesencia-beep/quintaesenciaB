@@ -101,7 +101,57 @@ const SCHEMA = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+
+  // Ajustes del negocio editables desde el panel: una fila por sección, en JSON (ver lib/settings.ts).
+  `CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+
+  // Contadores con nombre (p. ej. numeración de facturas por serie). Se incrementan en una transacción.
+  `CREATE TABLE IF NOT EXISTS counters (
+    key TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+  )`,
 ]
+
+/**
+ * Columnas añadidas después de la primera versión. SQLite no tiene "ADD COLUMN IF NOT EXISTS", así que se
+ * comprueban con PRAGMA table_info y se añaden solo las que falten (también en bases creadas por el seed).
+ */
+const COLUMNS: { table: string; column: string; ddl: string }[] = [
+  // Facturas: número (serie + correlativo), fecha de emisión y copia inmutable de los datos facturados.
+  { table: 'orders', column: 'invoice_number', ddl: 'TEXT' },
+  { table: 'orders', column: 'invoice_issued_at', ddl: 'TEXT' },
+  { table: 'orders', column: 'invoice_json', ddl: 'TEXT' },
+  // Pedido creado a partir de un presupuesto aceptado.
+  { table: 'orders', column: 'quote_id', ddl: 'TEXT' },
+  // Presupuestos: enlace público con token, propuesta con precio enviada al cliente y pedido resultante.
+  { table: 'quotes', column: 'public_token', ddl: 'TEXT' },
+  { table: 'quotes', column: 'proposal_json', ddl: 'TEXT' },
+  { table: 'quotes', column: 'proposal_sent_at', ddl: 'TEXT' },
+  { table: 'quotes', column: 'order_id', ddl: 'TEXT' },
+]
+
+/** Índices sobre columnas añadidas (se crean después de las columnas). */
+const POST_SCHEMA = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_invoice ON orders(invoice_number) WHERE invoice_number IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_orders_quote ON orders(quote_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_quotes_order ON quotes(order_id)`,
+]
+
+async function ensureColumns(client: Client): Promise<void> {
+  const tables = [...new Set(COLUMNS.map((c) => c.table))]
+  for (const table of tables) {
+    const info = await client.execute(`PRAGMA table_info(${table})`)
+    const existing = new Set(info.rows.map((r) => String(r.name)))
+    for (const col of COLUMNS) {
+      if (col.table !== table || existing.has(col.column)) continue
+      await client.execute(`ALTER TABLE ${table} ADD COLUMN ${col.column} ${col.ddl}`)
+    }
+  }
+}
 
 type Globals = typeof globalThis & { __puDb?: Client; __puDbReady?: Promise<void> }
 const g = globalThis as Globals
@@ -125,6 +175,8 @@ export async function getDb(): Promise<Client> {
   if (!g.__puDbReady) {
     g.__puDbReady = (async () => {
       await client.batch(SCHEMA.map((sql) => ({ sql, args: [] })), 'write')
+      await ensureColumns(client)
+      await client.batch(POST_SCHEMA.map((sql) => ({ sql, args: [] })), 'write')
     })().catch((err) => {
       g.__puDbReady = undefined
       throw err

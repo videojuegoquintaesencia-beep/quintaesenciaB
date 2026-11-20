@@ -82,7 +82,7 @@ export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
   return sendMail({
     to: quote.email,
     subject: isQuote ? `Hemos recibido tu solicitud de presupuesto (${quote.number})` : `Hemos recibido tu mensaje (${quote.number})`,
-    html: emailShell({
+    html: await emailShell({
       title: isQuote ? '¡Solicitud recibida!' : '¡Mensaje recibido!',
       preheader: 'Te respondemos en 1-2 días laborables.',
       bodyHtml: `<p style="margin:0 0 12px">${esc(greeting(quote))}, gracias por escribirnos. Hemos recibido tu ${what} y te responderemos en <strong>1-2 días laborables</strong>.</p>
@@ -109,7 +109,7 @@ export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
 
 /** Aviso interno al negocio. */
 export async function sendQuoteAdminAlert(quote: Quote): Promise<MailResult> {
-  const to = adminNotifyAddress()
+  const to = await adminNotifyAddress()
   if (!to) return { ok: false, error: 'Sin destinatario de avisos' }
   const isQuote = quote.kind === 'quote'
   const adminUrl = absoluteUrl(`/admin/presupuestos/${quote.id}`)
@@ -130,7 +130,7 @@ export async function sendQuoteAdminAlert(quote: Quote): Promise<MailResult> {
   return sendMail({
     to,
     subject: `${isQuote ? 'Nuevo presupuesto' : 'Nuevo mensaje'} ${quote.number} — ${headline}`,
-    html: emailShell({
+    html: await emailShell({
       title: `${isQuote ? 'Nueva solicitud de presupuesto' : 'Nuevo mensaje de contacto'} ${quote.number}`,
       preheader: quote.message.slice(0, 90),
       bodyHtml: `${rowsHtml(rows)}

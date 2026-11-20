@@ -115,13 +115,14 @@ function legalNoticeParts(order: Order) {
 
 export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
   const url = orderTrackingUrl(order)
+  const owner = await ownerLine()
   const lead = `de ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables`
   const demo = isDemo(order)
   const notice = legalNoticeParts(order)
   const demoHtml = demo
     ? `<p style="background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Pedido de demostración: no se ha cobrado nada.</p>`
     : ''
-  const html = emailShell({
+  const html = await emailShell({
     title: `¡Gracias, ${firstName(order)}! Tu pedido ${order.number} está confirmado`,
     preheader: demo
       ? 'Pedido de demostración: no se ha cobrado nada.'
@@ -137,7 +138,7 @@ export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
       ${sectionTitle('Información importante')}
       <p style="margin:0 0 8px;font-size:14px;color:${MUTED}"><strong>Desistimiento y garantía.</strong> ${esc(notice.withdrawal)} Condiciones de venta: <a href="${esc(notice.conditionsUrl)}" style="color:#5a3fe0">${esc(notice.conditionsUrl)}</a>.</p>
       <p style="margin:0 0 8px;font-size:14px;color:${MUTED}"><strong>Factura.</strong> ${esc(notice.billing)}</p>
-      <p style="margin:0;font-size:14px;color:${MUTED}"><strong>Titular.</strong> ${esc(ownerLine())}</p>
+      <p style="margin:0;font-size:14px;color:${MUTED}"><strong>Titular.</strong> ${esc(owner)}</p>
       <p style="margin:22px 0 0;font-size:14px;color:${MUTED}">¿Algo no cuadra? Responde a este email o escríbenos a <a href="mailto:${esc(site.contact.email)}" style="color:#5a3fe0">${esc(site.contact.email)}</a> indicando tu número de pedido.</p>`,
     ctaLabel: 'Ver el estado de mi pedido',
     ctaUrl: url,
@@ -151,7 +152,7 @@ export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
     `\nDIRECCIÓN DE ENVÍO\n${addressLines(order).join('\n')}`,
     `\nINFORMACIÓN IMPORTANTE\nDesistimiento y garantía: ${notice.withdrawal} Condiciones de venta: ${notice.conditionsUrl}`,
     `Factura: ${notice.billing}`,
-    `Titular: ${ownerLine()}`,
+    `Titular: ${owner}`,
     `\nVer el estado de tu pedido: ${url}`,
     `Dudas: ${site.contact.email}`,
   ].join('\n')
@@ -180,7 +181,7 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
   const demoHtml = demo
     ? `<p style="margin:0 0 12px;background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Pedido de demostración: no se ha cobrado nada.</p>`
     : ''
-  const html = emailShell({
+  const html = await emailShell({
     title: `Pedido ${order.number}: ${label}`,
     preheader: demo ? 'Pedido de demostración: no se ha cobrado nada.' : body,
     bodyHtml: `${demoHtml}<p style="margin:0">${esc(body)}</p>${tracking}${note}
@@ -219,7 +220,7 @@ function printsText(order: Order): string {
 }
 
 export async function sendOrderAdminAlert(order: Order): Promise<MailResult> {
-  const to = adminNotifyAddress()
+  const to = await adminNotifyAddress()
   if (!to) return { ok: false, error: 'Sin destinatario de avisos' }
   const adminUrl = absoluteUrl(`/admin/pedidos/${order.id}`)
   const units = order.items.reduce((n, it) => n + it.quantity, 0)
@@ -228,7 +229,7 @@ export async function sendOrderAdminAlert(order: Order): Promise<MailResult> {
   const itemNotes = order.items
     .map((it) => (it.note ? `<li>${esc(it.productName)} ${esc(it.colorName)}: ${esc(it.note)}</li>` : ''))
     .join('')
-  const html = emailShell({
+  const html = await emailShell({
     title: `Nuevo pedido ${order.number} · ${formatEUR(order.totalCents)}`,
     preheader: `${order.customerName} · ${units} ${units === 1 ? 'unidad' : 'unidades'}`,
     bodyHtml: `${demo ? `<p style="background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">PAGO SIMULADO (modo demostración): no hay cobro real.</p>` : ''}
