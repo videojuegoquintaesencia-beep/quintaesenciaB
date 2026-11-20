@@ -12,11 +12,16 @@ import {
   type PayPalOrderResponse,
 } from '@/lib/paypal'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
-import { site } from '@/config/site'
+import { getSettings } from '@/lib/settings'
+import { writeToUs } from '@/lib/contact-text'
 
 export const runtime = 'nodejs'
 
-const contactHint = `Si te han cobrado, escríbenos a ${site.contact.email} y lo revisamos enseguida.`
+/** Con el email de contacto efectivo (ajustes del panel); solo se construye cuando hay que devolver un error. */
+async function contactHint(): Promise<string> {
+  const { contact } = await getSettings()
+  return `Si te han cobrado, ${writeToUs(contact.email)} y lo revisamos enseguida.`
+}
 
 /**
  * POST /api/paypal/capture  { orderId, paypalOrderId }
@@ -62,7 +67,7 @@ export async function POST(req: Request) {
     }
     console.error('[paypal] Error al capturar:', err instanceof Error ? err.message : err)
     return Response.json(
-      { error: `No hemos podido confirmar el pago con PayPal. ${contactHint}`, code: 'capture_error' },
+      { error: `No hemos podido confirmar el pago con PayPal. ${await contactHint()}`, code: 'capture_error' },
       { status: 502 },
     )
   }
@@ -83,7 +88,7 @@ export async function POST(req: Request) {
     console.error(`[paypal] Captura rechazada para ${order.number}: ${verdict.message}`)
     await markPaymentFailed(order.id, `Verificación del pago fallida: ${verdict.message}`)
     return Response.json(
-      { error: `No hemos podido verificar el pago. ${contactHint}`, code: 'verification_failed' },
+      { error: `No hemos podido verificar el pago. ${await contactHint()}`, code: 'verification_failed' },
       { status: 409 },
     )
   }

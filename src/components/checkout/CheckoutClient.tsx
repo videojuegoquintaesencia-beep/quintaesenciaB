@@ -19,7 +19,18 @@ import { buildPayload, emptyValues, mapServerErrors, validateForm, type FormErro
 import type { PaymentBridge } from './payment-types'
 import { PaymentSection } from './PaymentSection'
 
-export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; paypalClientId: string }) {
+export function CheckoutClient({
+  mode,
+  paypalClientId,
+  legalName,
+  contactEmail,
+}: {
+  mode: PaymentMode
+  paypalClientId: string
+  /** Titular y email de contacto efectivos (ajustes del panel), que la página de servidor pasa al formulario. */
+  legalName: string
+  contactEmail: string
+}) {
   const router = useRouter()
   const { lines, clear, removeLine } = useCart()
   const hydrated = useCartHydrated()
@@ -140,7 +151,14 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
       </div>
 
       <div ref={formRef} className="space-y-6 lg:order-1">
-        <CheckoutForm values={values} errors={errors} onChange={update} onPostalCodeChange={onPostalCodeChange} />
+        <CheckoutForm
+          values={values}
+          errors={errors}
+          onChange={update}
+          onPostalCodeChange={onPostalCodeChange}
+          legalName={legalName}
+          contactEmail={contactEmail}
+        />
 
         {badLines.length > 0 && (
           <div role="alert" className="card border-danger bg-danger-soft p-5">
@@ -196,6 +214,7 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
           bridge={bridge}
           totalCents={totals.totalCents}
           shippingEstimated={!postalCodeKnown}
+          contactEmail={contactEmail}
         />
       </div>
 

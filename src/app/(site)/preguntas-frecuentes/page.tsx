@@ -8,6 +8,7 @@ import { PageHero } from '@/components/content/PageHero'
 import { pageMetadata } from '@/components/content/metadata'
 import { whatsappHref } from '@/components/content/contact-info'
 import { FAQ_GROUPS, faqPlainText } from '@/lib/faq'
+import { getSettings } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Preguntas frecuentes',
@@ -29,8 +30,9 @@ const faqJsonLd = {
   ),
 }
 
-export default function PreguntasFrecuentesPage() {
-  const whatsapp = whatsappHref()
+export default async function PreguntasFrecuentesPage() {
+  const { contact } = await getSettings()
+  const whatsapp = whatsappHref(contact.whatsapp)
   return (
     <>
       <PageHero tone="violet" crumbs={[{ label: 'Preguntas frecuentes' }]} eyebrow="Dudas habituales" title="Preguntas frecuentes">

@@ -17,7 +17,7 @@ equipos y eventos**.
 | Compra | `/carrito`, `/checkout`, `/pedido/[id]`, `/seguimiento` | Precio recalculado siempre en el servidor, envío, IVA, PayPal, seguimiento por enlace con token |
 | Empresas | `/empresas`, `/contacto` | Formulario de presupuesto con adjuntos y formulario de contacto |
 | Legal | `/legal/aviso-legal`, `/legal/privacidad`, `/legal/cookies`, `/legal/condiciones` | Plantillas generales. **Deben revisarlas un profesional** |
-| Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, presupuestos y mensajes |
+| Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, presupuestos y mensajes, ajustes del negocio (`/admin/ajustes`) |
 
 ### Reglas de negocio (están en `src/config/`)
 
@@ -28,7 +28,8 @@ equipos y eventos**.
   (códigos postales 35, 38, 51 y 52): para eso, presupuesto.
 - Producción de 2 a 4 días laborables antes del envío.
 - Productos, colores, tallas, zonas de impresión y tarifas: `src/config/products.ts`.
-  Datos del negocio, envío y plazos: `src/config/site.ts`.
+  Datos del negocio, envío y plazos: `src/config/site.ts`. Son los **valores por defecto**: lo que la dueña guarda en
+  el panel (`/admin/ajustes`, tabla `settings`) se superpone a ellos sección a sección (ver «Ajustes desde el panel»).
 
 ## Puesta en marcha
 
@@ -56,6 +57,39 @@ npm run seed:demo -- --force # los borra y los vuelve a crear
 ```
 
 Otros scripts: `npm run build`, `npm start`, `npm run lint`, `npm run typecheck`.
+
+## Ajustes desde el panel
+
+En `/admin/ajustes` la dueña rellena y cambia, sin tocar código, los datos que antes solo vivían en `src/config/site.ts`:
+
+- **Datos del titular** (`/admin/ajustes/negocio`): razón social o nombre y apellidos, NIF/CIF, domicilio fiscal, datos
+  registrales (obligatorios si es una sociedad) y proveedores que tratan datos. Cada campo explica para qué sirve (aviso
+  legal del art. 10 LSSI-CE, política de privacidad, facturas, información básica del checkout y pie de los emails) y los
+  que siguen con un dato de ejemplo (`[COMPLETAR…]`) aparecen marcados en rojo.
+- **Contacto y redes** (`/admin/ajustes/contacto`): email de la tienda, teléfono, WhatsApp (solo dígitos con prefijo, sin
+  `+`), Instagram y TikTok (usuario o URL), dirección pública y horario. Un campo vacío se oculta en toda la web; sin
+  WhatsApp no hay botón flotante; el email es la dirección de respuesta de los emails y, si no hay `ADMIN_NOTIFY_EMAIL`,
+  recibe los avisos.
+- **Envíos y plazos** y **Precios y descuentos**: se enlazan desde el índice y se documentan en sus propios apartados.
+
+Cómo funciona:
+
+- Cada formulario valida en el navegador con el **mismo esquema zod** que la API (`src/lib/settings-schema.ts`), muestra
+  los errores por campo y envía la **sección completa** a `POST /api/admin/settings/[sección]`. «Restablecer valores por
+  defecto» (con confirmación) hace `DELETE` y la sección vuelve a los valores del código. El índice muestra cada sección
+  como «Personalizada» o «Por defecto» y un aviso destacado mientras queden marcadores `[COMPLETAR…]` o el email `.example`.
+- **Toda la app lee los valores efectivos** con `getSettings()` (`src/lib/settings.ts`): páginas legales, contacto,
+  empresas, preguntas frecuentes, seguimiento, pie y botón de WhatsApp (desde el layout del sitio), JSON-LD de la portada,
+  checkout (información básica de protección de datos), mensajes de error de las API públicas, emails (cuerpo, remite y
+  `Reply-To`) y la hoja de producción (remite de la etiqueta). Los componentes de cliente reciben los valores por props
+  desde la página de servidor más cercana; los helpers `contactLinks(contact)` y `whatsappHref(whatsapp)` son funciones
+  puras de los datos efectivos.
+- Las páginas públicas que leen ajustes siguen **prerenderizadas** en el build (con lo que haya en la base de datos en ese
+  momento o, si no hay acceso, los valores del código) y se **revalidan** al guardar cualquier sección
+  (`revalidatePath('/', 'layout')` en la API). Si en el hosting el build no llega a la base de datos, basta con guardar
+  una sección desde el panel tras desplegar para que las páginas se regeneren con los datos reales.
+- La comprobación de arranque en producción (`src/instrumentation.ts` → `src/lib/production-checks.ts`) mira los ajustes
+  **efectivos**: solo avisa de datos de ejemplo si siguen siéndolo después de aplicar lo guardado en el panel.
 
 ## Variables de entorno
 
@@ -93,8 +127,9 @@ Todas están documentadas en `.env.example`.
    pasan de tamaño, pero un tope delante la protege mejor. Si usas Vercel, comprueba que su límite de cuerpo
    de las funciones permite subidas de ese tamaño y haz una prueba con una foto grande en tu entorno real.
 7. **Arranque.** Al arrancar en producción el servidor escribe en el registro los problemas de configuración que
-   detecta (contraseña o secreto débiles, `NEXT_PUBLIC_SITE_URL` sin definir, datos del titular de `src/config/site.ts` que
-   siguen siendo de ejemplo, `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin configurar…). Léelo.
+   detecta (contraseña o secreto débiles, `NEXT_PUBLIC_SITE_URL` sin definir, datos del titular o de contacto que siguen
+   siendo de ejemplo tras aplicar lo guardado en el panel, `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin
+   configurar…). Léelo.
 
 Los límites de peticiones de subidas, checkout y formularios viven en memoria de cada instancia; con varias
 instancias conviene sustituirlos por un almacén compartido (Redis/Upstash). El límite de intentos de acceso al panel
@@ -106,15 +141,16 @@ pedidos que nunca se pagaron, con sus datos y archivos (30 días); los plazos es
 
 ## Antes de publicar: lo que tienes que completar o decidir
 
-- [ ] **Datos de contacto** en `src/config/site.ts` (`contact`): email, teléfono, WhatsApp, redes, dirección y horario.
-      El email es de ejemplo (`hola@piezaunica.example`, un dominio reservado que no recibe correo). El teléfono, el
-      WhatsApp (sin él no aparece el botón flotante) y la dirección están vacíos y, por tanto, ocultos en la web: rellénalos
-      si quieres mostrarlos.
-- [ ] **Datos del titular** (`business`): razón social o nombre y apellidos, NIF/CIF, domicilio fiscal y, si procede,
-      datos registrales (obligatorios si el titular es una sociedad: p. ej. «Registro Mercantil de Madrid, Tomo X, Folio Y,
-      Hoja Z»), y los proveedores de alojamiento, base de datos y correo con el país donde almacenan los datos (`processors`,
-      para la política de privacidad). Aparecen resaltados en las páginas legales mientras sigan siendo `[COMPLETAR…]`, y
-      el arranque en producción lo registra como error.
+- [ ] **Datos de contacto**, desde el panel (`/admin/ajustes/contacto`) o en `src/config/site.ts` (`contact`): email,
+      teléfono, WhatsApp, redes, dirección y horario. El email por defecto es de ejemplo (`hola@piezaunica.example`, un
+      dominio reservado que no recibe correo). El teléfono, el WhatsApp (sin él no aparece el botón flotante) y la dirección
+      están vacíos y, por tanto, ocultos en la web: rellénalos si quieres mostrarlos.
+- [ ] **Datos del titular**, desde el panel (`/admin/ajustes/negocio`) o en `src/config/site.ts` (`business`): razón social
+      o nombre y apellidos, NIF/CIF, domicilio fiscal y, si procede, datos registrales (obligatorios si el titular es una
+      sociedad: p. ej. «Registro Mercantil de Madrid, Tomo X, Folio Y, Hoja Z»), y los proveedores de alojamiento, base de
+      datos y correo con el país donde almacenan los datos (`processors`, para la política de privacidad). Aparecen
+      resaltados en las páginas legales y en rojo en el panel mientras sigan siendo `[COMPLETAR…]`, y el arranque en
+      producción lo registra como error.
 - [ ] **Textos legales**: están redactados como plantillas generales para una tienda española. Que los revise un
       profesional, junto con las promesas operativas que contienen (cancelación antes de producción, reimpresión o
       reembolso en caso de defecto, hojas de reclamaciones, plazos de conservación de datos).
@@ -145,8 +181,8 @@ src/
     admin/       panel de administración ((auth) = login, (panel) = protegido)
     api/         checkout, PayPal, subidas, archivos, presupuestos, contacto, admin
   components/    ui, mockups (ilustraciones SVG), editor, cart, checkout, admin, catalog, home, content, site
-  config/        site.ts (negocio) y products.ts (catálogo, zonas y tarifas)
-  lib/           pricing, design, pedidos, base de datos, auth, emails, PayPal, límites de peticiones…
+  config/        site.ts (negocio) y products.ts (catálogo, zonas y tarifas): valores por defecto
+  lib/           pricing, design, pedidos, base de datos, auth, emails, PayPal, límites de peticiones, settings (ajustes)…
   proxy.ts       protege /admin y /api/admin (en Next.js 16 sustituye a middleware.ts)
 scripts/         seed-demo.mjs (datos de ejemplo para el panel)
 ```

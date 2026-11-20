@@ -72,11 +72,16 @@ export function CheckoutForm({
   errors,
   onChange,
   onPostalCodeChange,
+  legalName,
+  contactEmail,
 }: {
   values: FormValues
   errors: FormErrors
   onChange: <K extends keyof FormValues>(key: K, value: FormValues[K]) => void
   onPostalCodeChange: (value: string) => void
+  /** Razón social del titular y email de contacto efectivos (ajustes del panel), para la información básica de protección de datos. */
+  legalName: string
+  contactEmail: string
 }) {
   const zoneProblem = isUndeliverablePostalCode(values.postalCode)
   const postalError = zoneProblem
@@ -273,9 +278,9 @@ export function CheckoutForm({
             <ExternalLink href="/legal/condiciones#revision">contenidos que no imprimimos</ExternalLink>.
           </Consent>
           <p className="text-sm text-ink-soft">
-            <strong>Información básica sobre protección de datos:</strong> el responsable es <LegalValue>{site.business.legalName}</LegalValue>.
-            Usamos tus datos para gestionar tu pedido. Puedes ejercer tus derechos escribiendo a {site.contact.email}. Más información en la{' '}
-            <ExternalLink href="/legal/privacidad">política de privacidad</ExternalLink>.
+            <strong>Información básica sobre protección de datos:</strong> el responsable es <LegalValue>{legalName}</LegalValue>.
+            Usamos tus datos para gestionar tu pedido. Puedes ejercer tus derechos {contactEmail ? `escribiendo a ${contactEmail}` : 'escribiéndonos desde la página de contacto'}. Más
+            información en la <ExternalLink href="/legal/privacidad">política de privacidad</ExternalLink>.
           </p>
         </div>
       </section>

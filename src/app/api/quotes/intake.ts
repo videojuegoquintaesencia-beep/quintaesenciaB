@@ -4,11 +4,12 @@
  */
 import { after } from 'next/server'
 import type { ZodType } from 'zod'
-import { site } from '@/config/site'
+import { writeToUs } from '@/lib/contact-text'
 import { sendQuoteAdminAlert, sendQuoteReceived } from '@/lib/emails/quote'
 import type { Quote, QuoteKind } from '@/lib/quotes'
 import { readBodyJson } from '@/lib/http-body'
 import { clientIp, rateLimit } from '@/lib/rate-limit'
+import { getSettings } from '@/lib/settings'
 import { fieldErrors, firstZodError } from '@/lib/validators'
 
 const MAX_BODY_BYTES = 32 * 1024
@@ -43,6 +44,9 @@ export async function handleIntake<T>(
     perHour: number
   },
 ): Promise<Response> {
+  // Los mensajes de error remiten al email de contacto efectivo (ajustes del panel).
+  const alternative = async () => writeToUs((await getSettings()).contact.email)
+
   const limit = rateLimit(`intake:${opts.kind}:${clientIp(req)}`, opts.perHour, 60 * 60_000)
   if (!limit.ok) {
     const minutes = Math.max(1, Math.ceil(limit.retryAfterSec / 60))
@@ -50,7 +54,7 @@ export async function handleIntake<T>(
       429,
       {
         ok: false,
-        error: `Has enviado varios formularios seguidos. Inténtalo de nuevo en ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'} o escríbenos a ${site.contact.email}.`,
+        error: `Has enviado varios formularios seguidos. Inténtalo de nuevo en ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'} o ${await alternative()}.`,
       },
       { 'Retry-After': String(limit.retryAfterSec) },
     )
@@ -61,7 +65,7 @@ export async function handleIntake<T>(
   if (!allIps.ok) {
     return fail(
       429,
-      { ok: false, error: `Estamos recibiendo muchos envíos a la vez. Inténtalo de nuevo en un rato o escríbenos a ${site.contact.email}.` },
+      { ok: false, error: `Estamos recibiendo muchos envíos a la vez. Inténtalo de nuevo en un rato o ${await alternative()}.` },
       { 'Retry-After': String(allIps.retryAfterSec) },
     )
   }
@@ -88,7 +92,7 @@ export async function handleIntake<T>(
     quote = await opts.create(parsed.data)
   } catch (err) {
     console.error('[intake] No se pudo guardar:', err instanceof Error ? err.message : err)
-    return fail(500, { ok: false, error: `No hemos podido guardar tu envío. Inténtalo de nuevo o escríbenos a ${site.contact.email}.` })
+    return fail(500, { ok: false, error: `No hemos podido guardar tu envío. Inténtalo de nuevo o ${await alternative()}.` })
   }
 
   // Los emails se envían tras responder y nunca hacen fallar la petición.

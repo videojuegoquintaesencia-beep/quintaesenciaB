@@ -5,6 +5,7 @@
 import 'server-only'
 import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, sendMail, type MailResult } from '../email'
+import { getSettings } from '../settings'
 import { ENTITY_WORD } from './names'
 import { QUOTE_PRODUCT_LABELS, type QuoteProduct } from '../quote-form'
 import type { Quote } from '../quotes'
@@ -78,6 +79,8 @@ export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
   const cta = isQuote
     ? { label: 'Prepara tu diseño', url: absoluteUrl('/como-funciona#prepara-tu-diseno') }
     : { label: 'Ver preguntas frecuentes', url: absoluteUrl('/preguntas-frecuentes') }
+  // Email de contacto efectivo (ajustes del panel): firma del texto plano y dirección de respuesta.
+  const { contact } = await getSettings()
 
   return sendMail({
     to: quote.email,
@@ -101,9 +104,9 @@ export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
       '',
       `¿Quieres añadir algo? Responde a este email y lo sumamos a tu ${isQuote ? 'solicitud' : 'mensaje'}.`,
       '',
-      `${site.name} · ${site.contact.email}`,
+      [site.name, contact.email].filter(Boolean).join(' · '),
     ].join('\n'),
-    replyTo: site.contact.email || undefined,
+    replyTo: contact.email || undefined,
   })
 }
 

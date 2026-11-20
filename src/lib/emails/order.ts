@@ -8,6 +8,7 @@ import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, ownerLine, sendMail, type MailResult } from '../email'
 import { formatEUR, unidades } from '../format'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL } from '../order-status'
+import { getSettings } from '../settings'
 import { ENTITY_WORD } from './names'
 import type { Order, OrderItem } from '../orders'
 
@@ -115,7 +116,8 @@ function legalNoticeParts(order: Order) {
 
 export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
   const url = orderTrackingUrl(order)
-  const owner = await ownerLine()
+  // Email de contacto efectivo (ajustes del panel): se cita en el cuerpo y como dirección de respuesta.
+  const [owner, { contact }] = await Promise.all([ownerLine(), getSettings()])
   const lead = `de ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables`
   const demo = isDemo(order)
   const notice = legalNoticeParts(order)
@@ -139,7 +141,7 @@ export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
       <p style="margin:0 0 8px;font-size:14px;color:${MUTED}"><strong>Desistimiento y garantía.</strong> ${esc(notice.withdrawal)} Condiciones de venta: <a href="${esc(notice.conditionsUrl)}" style="color:#5a3fe0">${esc(notice.conditionsUrl)}</a>.</p>
       <p style="margin:0 0 8px;font-size:14px;color:${MUTED}"><strong>Factura.</strong> ${esc(notice.billing)}</p>
       <p style="margin:0;font-size:14px;color:${MUTED}"><strong>Titular.</strong> ${esc(owner)}</p>
-      <p style="margin:22px 0 0;font-size:14px;color:${MUTED}">¿Algo no cuadra? Responde a este email o escríbenos a <a href="mailto:${esc(site.contact.email)}" style="color:#5a3fe0">${esc(site.contact.email)}</a> indicando tu número de pedido.</p>`,
+      <p style="margin:22px 0 0;font-size:14px;color:${MUTED}">¿Algo no cuadra? Responde a este email${contact.email ? ` o escríbenos a <a href="mailto:${esc(contact.email)}" style="color:#5a3fe0">${esc(contact.email)}</a>` : ''} indicando tu número de pedido.</p>`,
     ctaLabel: 'Ver el estado de mi pedido',
     ctaUrl: url,
   })
@@ -154,14 +156,16 @@ export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
     `Factura: ${notice.billing}`,
     `Titular: ${owner}`,
     `\nVer el estado de tu pedido: ${url}`,
-    `Dudas: ${site.contact.email}`,
-  ].join('\n')
+    contact.email ? `Dudas: ${contact.email}` : '',
+  ]
+    .filter((l) => l !== '')
+    .join('\n')
   return sendMail({
     to: order.email,
     subject: `Pedido ${order.number} confirmado — ${site.name}`,
     html,
     text,
-    replyTo: site.contact.email || undefined,
+    replyTo: contact.email || undefined,
   })
 }
 
@@ -181,11 +185,12 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
   const demoHtml = demo
     ? `<p style="margin:0 0 12px;background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Pedido de demostración: no se ha cobrado nada.</p>`
     : ''
+  const { contact } = await getSettings()
   const html = await emailShell({
     title: `Pedido ${order.number}: ${label}`,
     preheader: demo ? 'Pedido de demostración: no se ha cobrado nada.' : body,
     bodyHtml: `${demoHtml}<p style="margin:0">${esc(body)}</p>${tracking}${note}
-      <p style="margin:18px 0 0;font-size:14px;color:${MUTED}">Si tienes cualquier duda, responde a este email o escríbenos a ${esc(site.contact.email)}.</p>`,
+      <p style="margin:18px 0 0;font-size:14px;color:${MUTED}">Si tienes cualquier duda, responde a este email${contact.email ? ` o escríbenos a ${esc(contact.email)}` : ''}.</p>`,
     ctaLabel: 'Ver mi pedido',
     ctaUrl: url,
   })
@@ -204,7 +209,7 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
     subject: `Pedido ${order.number}: ${label} — ${site.name}`,
     html,
     text,
-    replyTo: site.contact.email || undefined,
+    replyTo: contact.email || undefined,
   })
 }
 

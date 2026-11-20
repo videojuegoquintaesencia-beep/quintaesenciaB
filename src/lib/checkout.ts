@@ -5,8 +5,8 @@
  */
 import 'server-only'
 import { z } from 'zod'
-import { site } from '@/config/site'
 import { getArea, getProduct, getView, type Product } from '@/config/products'
+import { writeToUsCapitalized } from './contact-text'
 import { areaUsage, parseDesign, printedAreaIds, designArtworkFileIds, type Design } from './design'
 import { getDb } from './db'
 import { provinceFromPostalCode } from './es-provinces'
@@ -17,11 +17,16 @@ import { isValidId, newId } from './ids'
 import { addOrderEvent, type NewOrderInput, type Order, type OrderItem, type PaymentProvider } from './orders'
 import { computeCartTotals, priceLine, type LinePrice } from './pricing'
 import { printFileMatchesBox } from './print-file'
+import { getSettings } from './settings'
 import { addressSchema, customerSchema, fieldErrors } from './validators'
 
 export const MAX_CART_LINES = 20
 
-export const PAYMENT_UNAVAILABLE_MESSAGE = `El pago online no está disponible ahora mismo. Escríbenos a ${site.contact.email} y te ayudamos con tu pedido.`
+/** Mensaje cuando no hay ningún medio de pago configurado; cita el email de contacto efectivo (ajustes del panel). */
+export async function paymentUnavailableMessage(): Promise<string> {
+  const { contact } = await getSettings()
+  return `El pago online no está disponible ahora mismo. ${writeToUsCapitalized(contact.email)} y te ayudamos con tu pedido.`
+}
 
 const fileIdSchema = z.string().regex(/^[a-z0-9]{12,40}$/)
 

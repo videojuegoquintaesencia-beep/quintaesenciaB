@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useState, type FormEvent } from 'react'
 import type { ZodType } from 'zod'
-import { site } from '@/config/site'
+import { writeToUs } from '@/lib/contact-text'
 import { fieldErrors } from '@/lib/validators'
 
 export type FieldErrors = Record<string, string>
@@ -25,6 +25,7 @@ export function useIntakeForm<V extends object>({
   schema,
   toInput,
   preflight,
+  contactEmail,
 }: {
   endpoint: string
   idPrefix: string
@@ -34,6 +35,8 @@ export function useIntakeForm<V extends object>({
   toInput: (values: V) => unknown
   /** Comprobación previa al envío (p. ej. subidas en curso): devuelve un mensaje para impedirlo. */
   preflight?: () => string | null
+  /** Email de contacto efectivo (ajustes del panel), para el mensaje de fallo de conexión. */
+  contactEmail: string
 }) {
   const [values, setValues] = useState<V>(initial)
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -96,9 +99,7 @@ export function useIntakeForm<V extends object>({
       }
       setFormError(data?.error ?? 'No hemos podido enviar el formulario. Inténtalo de nuevo en unos minutos.')
     } catch {
-      setFormError(
-        `No hemos podido conectar. Comprueba tu conexión e inténtalo de nuevo, o escríbenos a ${site.contact.email}.`,
-      )
+      setFormError(`No hemos podido conectar. Comprueba tu conexión e inténtalo de nuevo, o ${writeToUs(contactEmail)}.`)
     }
     setStatus('idle')
   }

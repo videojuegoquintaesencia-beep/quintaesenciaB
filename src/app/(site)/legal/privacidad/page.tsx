@@ -4,6 +4,8 @@ import { LegalPage, type LegalSection } from '@/components/content/LegalPage'
 import { LegalFacts, LegalValue, OwnerFacts } from '@/components/content/LegalValue'
 import { pageMetadata } from '@/components/content/metadata'
 import { site } from '@/config/site'
+import { getSettings } from '@/lib/settings'
+import type { BusinessSettings, ContactSettings } from '@/lib/settings-schema'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Política de privacidad',
@@ -11,9 +13,6 @@ export const metadata: Metadata = pageMetadata({
     'Qué datos personales tratamos, para qué, con qué base legal, quién los recibe, cuánto tiempo los conservamos y cómo ejercer tus derechos (RGPD y LOPDGDD).',
   path: '/legal/privacidad',
 })
-
-const email = site.contact.email
-const mail = email ? <a href={`mailto:${email}`}>{email}</a> : 'nuestro correo de contacto'
 
 const PURPOSES: { title: string; rows: { label: string; value: string }[] }[] = [
   {
@@ -49,7 +48,11 @@ const PURPOSES: { title: string; rows: { label: string; value: string }[] }[] = 
   },
 ]
 
-const SECTIONS: LegalSection[] = [
+/** El responsable, su email y los proveedores (encargados) salen de los ajustes efectivos, editables en el panel. */
+function sections(business: BusinessSettings, contact: ContactSettings): LegalSection[] {
+  const email = contact.email
+  const mail = email ? <a href={`mailto:${email}`}>{email}</a> : 'nuestro correo de contacto'
+  return [
   {
     id: 'responsable',
     title: 'Quién es el responsable de tus datos',
@@ -58,7 +61,7 @@ const SECTIONS: LegalSection[] = [
         <p>
           El responsable del tratamiento de tus datos personales es el titular de {site.name}, cuyos datos son:
         </p>
-        <OwnerFacts />
+        <OwnerFacts business={business} contact={contact} />
         <p>
           Para cualquier cuestión sobre privacidad puedes escribirnos a {mail}.
         </p>
@@ -147,7 +150,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Transferencias internacionales',
     content: (
       <p>
-        Nuestros proveedores de alojamiento, base de datos y correo son: <LegalValue>{site.business.processors}</LegalValue>. Cuando
+        Nuestros proveedores de alojamiento, base de datos y correo son: <LegalValue>{business.processors}</LegalValue>. Cuando
         almacenan o tratan datos fuera del Espacio Económico Europeo, lo hacen con las garantías que exige el RGPD: una decisión de
         adecuación de la Comisión Europea o las cláusulas contractuales tipo. PayPal y WhatsApp (Meta) pueden tratar datos fuera del
         Espacio Económico Europeo conforme a sus propias políticas de privacidad.
@@ -243,15 +246,17 @@ const SECTIONS: LegalSection[] = [
       </p>
     ),
   },
-]
+  ]
+}
 
-export default function PrivacidadPage() {
+export default async function PrivacidadPage() {
+  const { business, contact } = await getSettings()
   return (
     <LegalPage
       title="Política de privacidad"
       crumb="Privacidad"
       intro="Qué datos tratamos, para qué, quién los recibe y cómo puedes ejercer tus derechos, conforme al RGPD y a la LOPDGDD."
-      sections={SECTIONS}
+      sections={sections(business, contact)}
     />
   )
 }

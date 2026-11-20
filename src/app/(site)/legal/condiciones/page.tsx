@@ -4,6 +4,7 @@ import { LegalPage, type LegalSection } from '@/components/content/LegalPage'
 import { pageMetadata } from '@/components/content/metadata'
 import { site } from '@/config/site'
 import { formatEUR } from '@/lib/format'
+import { getSettings } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Condiciones de venta',
@@ -14,10 +15,11 @@ export const metadata: Metadata = pageMetadata({
 
 const { shipping, production } = site
 const vatPct = Math.round(site.vatRate * 100)
-const email = site.contact.email
-const mail = email ? <a href={`mailto:${email}`}>{email}</a> : 'nuestro correo de contacto'
 
-const SECTIONS: LegalSection[] = [
+/** El email de contacto sale de los ajustes efectivos (editable en el panel). */
+function sections(email: string): LegalSection[] {
+  const mail = email ? <a href={`mailto:${email}`}>{email}</a> : 'nuestro correo de contacto'
+  return [
   {
     id: 'quienes-somos',
     title: 'Quién vende y a quién se aplican estas condiciones',
@@ -302,15 +304,17 @@ const SECTIONS: LegalSection[] = [
       </p>
     ),
   },
-]
+  ]
+}
 
-export default function CondicionesPage() {
+export default async function CondicionesPage() {
+  const { contact } = await getSettings()
   return (
     <LegalPage
       title="Condiciones de venta"
       crumb="Condiciones de venta"
       intro="Cómo funcionan los pedidos de productos personalizados, los pagos, los envíos y tus derechos si algo no sale como esperabas."
-      sections={SECTIONS}
+      sections={sections(contact.email)}
     />
   )
 }

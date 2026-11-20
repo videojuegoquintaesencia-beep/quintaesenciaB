@@ -26,6 +26,7 @@ import { StepList, type Step } from '@/components/content/StepList'
 import { pageMetadata } from '@/components/content/metadata'
 import { telHref, whatsappHref } from '@/components/content/contact-info'
 import { site } from '@/config/site'
+import { getSettings } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Ropa, gorras y tazas personalizadas para empresas',
@@ -60,8 +61,11 @@ const STEPS: Step[] = [
   { title: 'Producimos y entregamos', text: `Imprimimos y enviamos tu pedido. En el presupuesto te damos un plazo concreto: los ${production.leadDaysMin} a ${production.leadDaysMax} días laborables son para pedidos habituales.` },
 ]
 
-export default function EmpresasPage() {
-  const whatsapp = whatsappHref('Hola, quería información para un pedido de empresa o equipo.')
+export default async function EmpresasPage() {
+  // Datos de contacto efectivos (editables en el panel).
+  const { contact } = await getSettings()
+  const whatsapp = whatsappHref(contact.whatsapp, 'Hola, quería información para un pedido de empresa o equipo.')
+  const canTalk = !!(contact.email || contact.phone || whatsapp)
   return (
     <>
       <PageHero
@@ -128,36 +132,38 @@ export default function EmpresasPage() {
             <SectionHeading id="presupuesto-titulo" eyebrow="Presupuesto sin compromiso" title="Cuéntanos qué necesitas">
               Cuantos más datos nos des, más ajustado será el presupuesto. Si no lo tienes todo claro, no pasa nada: lo vemos juntos.
             </SectionHeading>
-            <div className="card-flat bg-paper p-5">
-              <p className="font-display text-lg font-semibold">¿Prefieres hablar?</p>
-              <ul className="mt-3 grid gap-1 font-bold">
-                {site.contact.email && (
-                  <li>
-                    <a href={`mailto:${site.contact.email}`} className="inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline [overflow-wrap:anywhere]">
-                      <Mail aria-hidden="true" className="size-5 shrink-0" /> {site.contact.email}
-                    </a>
-                  </li>
-                )}
-                {site.contact.phone && (
-                  <li>
-                    <a href={telHref(site.contact.phone)} className="inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline">
-                      <Phone aria-hidden="true" className="size-5 shrink-0" /> {site.contact.phone}
-                    </a>
-                  </li>
-                )}
-                {whatsapp && (
-                  <li>
-                    <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline">
-                      <MessageCircle aria-hidden="true" className="size-5 shrink-0" /> WhatsApp
-                      <span className="sr-only"> (se abre en una pestaña nueva)</span>
-                    </a>
-                  </li>
-                )}
-              </ul>
-              {site.contact.hours && <p className="mt-2 text-sm text-ink-soft">{site.contact.hours}</p>}
-            </div>
+            {canTalk && (
+              <div className="card-flat bg-paper p-5">
+                <p className="font-display text-lg font-semibold">¿Prefieres hablar?</p>
+                <ul className="mt-3 grid gap-1 font-bold">
+                  {contact.email && (
+                    <li>
+                      <a href={`mailto:${contact.email}`} className="inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline [overflow-wrap:anywhere]">
+                        <Mail aria-hidden="true" className="size-5 shrink-0" /> {contact.email}
+                      </a>
+                    </li>
+                  )}
+                  {contact.phone && (
+                    <li>
+                      <a href={telHref(contact.phone)} className="inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline">
+                        <Phone aria-hidden="true" className="size-5 shrink-0" /> {contact.phone}
+                      </a>
+                    </li>
+                  )}
+                  {whatsapp && (
+                    <li>
+                      <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 underline-offset-4 hover:underline">
+                        <MessageCircle aria-hidden="true" className="size-5 shrink-0" /> WhatsApp
+                        <span className="sr-only"> (se abre en una pestaña nueva)</span>
+                      </a>
+                    </li>
+                  )}
+                </ul>
+                {contact.hours && <p className="mt-2 text-sm text-ink-soft">{contact.hours}</p>}
+              </div>
+            )}
           </div>
-          <QuoteForm />
+          <QuoteForm contactEmail={contact.email} />
         </div>
       </Section>
     </>

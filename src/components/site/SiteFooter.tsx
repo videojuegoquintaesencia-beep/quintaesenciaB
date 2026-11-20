@@ -3,6 +3,7 @@ import { Clock, Lock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react'
 import { PRODUCTS, QUANTITY_DISCOUNTS } from '@/config/products'
 import { site } from '@/config/site'
 import { formatEUR } from '@/lib/format'
+import type { ContactSettings } from '@/lib/settings-schema'
 import { contactLinks, whatsappUrl } from './contact-links'
 import { Logo } from './Logo'
 import { WhatsAppButton } from './WhatsAppButton'
@@ -47,10 +48,16 @@ const COLUMNS: { title: string; links: { href: string; label: string }[]; note?:
 const linkClass =
   'inline-flex min-h-8 pointer-coarse:min-h-11 items-center rounded-md text-cream/85 underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow'
 
-export function SiteFooter() {
-  const { contact, shipping } = site
-  const links = contactLinks().filter((l) => l.key === 'email' || l.key === 'phone' || l.key === 'whatsapp')
-  const social = contactLinks().filter((l) => l.key === 'instagram' || l.key === 'tiktok')
+/**
+ * Pie de la web. `contact` son los datos efectivos (editables en el panel), que llegan desde el layout del sitio.
+ * Sin `contact` (la página de error es un componente de cliente y no puede leer los ajustes) no se muestran datos de
+ * contacto: mejor ninguno que unos desactualizados.
+ */
+export function SiteFooter({ contact }: { contact?: ContactSettings }) {
+  const { shipping } = site
+  const all = contact ? contactLinks(contact) : []
+  const links = all.filter((l) => l.key === 'email' || l.key === 'phone' || l.key === 'whatsapp')
+  const social = all.filter((l) => l.key === 'instagram' || l.key === 'tiktok')
 
   return (
     <footer className="bg-ink text-cream">
@@ -87,13 +94,13 @@ export function SiteFooter() {
                   </a>
                 </li>
               ))}
-              {contact.hours && (
+              {contact?.hours && (
                 <li className="flex items-start gap-2.5">
                   <Clock aria-hidden="true" size={18} className="mt-1 shrink-0" />
                   <span>{contact.hours}</span>
                 </li>
               )}
-              {contact.address && (
+              {contact?.address && (
                 <li className="flex items-start gap-2.5">
                   <MapPin aria-hidden="true" size={18} className="mt-1 shrink-0" />
                   <span>{contact.address}</span>
@@ -148,7 +155,7 @@ export function SiteFooter() {
         </p>
       </div>
 
-      {contact.whatsapp && <WhatsAppButton href={whatsappUrl()} />}
+      {contact?.whatsapp && <WhatsAppButton href={whatsappUrl(contact.whatsapp)} />}
     </footer>
   )
 }

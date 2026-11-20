@@ -17,14 +17,15 @@ interface Values {
 
 const INITIAL: Values = { name: '', email: '', phone: '', message: '', consent: false, website: '' }
 
-/** Formulario de contacto general. */
-export function ContactForm() {
+/** Formulario de contacto general. `contactEmail` es el email efectivo de la tienda (ajustes del panel). */
+export function ContactForm({ contactEmail }: { contactEmail: string }) {
   const form = useIntakeForm<Values>({
     endpoint: '/api/contact',
     idPrefix: ID,
     initial: INITIAL,
     schema: contactMessageSchema,
     toInput: (v) => v,
+    contactEmail,
   })
   const { values, errors, setValue, status } = form
   const errorCount = Object.keys(errors).length

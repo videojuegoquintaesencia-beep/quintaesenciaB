@@ -1,5 +1,5 @@
 import { after } from 'next/server'
-import { PAYMENT_UNAVAILABLE_MESSAGE, prepareOrder, recordConsents } from '@/lib/checkout'
+import { paymentUnavailableMessage, prepareOrder, recordConsents } from '@/lib/checkout'
 import { readBodyJson } from '@/lib/http-body'
 import { runMaintenanceIfDue } from '@/lib/maintenance'
 import { createOrder, markPaymentFailed, setPayPalOrderId } from '@/lib/orders'
@@ -26,7 +26,7 @@ const tooMany = (retryAfterSec: number) =>
  */
 export async function POST(req: Request) {
   const mode = paymentMode()
-  if (mode === 'unavailable') return Response.json({ error: PAYMENT_UNAVAILABLE_MESSAGE, code: 'unavailable' }, { status: 503 })
+  if (mode === 'unavailable') return Response.json({ error: await paymentUnavailableMessage(), code: 'unavailable' }, { status: 503 })
 
   const ip = clientIp(req)
   // Tope amplio para cualquier petición y otro más estricto para crear pedidos (evita llenar la base de datos).
