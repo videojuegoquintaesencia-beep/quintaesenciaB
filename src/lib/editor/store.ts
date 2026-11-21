@@ -12,7 +12,7 @@ import { MAX_HISTORY, MIN_LAYER_CM } from './constants'
 import { clamp, fitSize, round2 } from './geometry'
 import { measureText, withMeasure } from './text'
 
-export type EditorTab = 'producto' | 'subir' | 'texto' | 'pegatinas' | 'capas' | 'resumen'
+export type EditorTab = 'producto' | 'plantillas' | 'subir' | 'texto' | 'pegatinas' | 'capas' | 'resumen'
 
 interface EditorState {
   ready: boolean
@@ -51,6 +51,11 @@ interface EditorState {
   addImage: (input: { fileId: string; name: string; naturalWidth: number; naturalHeight: number }) => string | null
   addText: () => string | null
   addSticker: (stickerId: string) => string | null
+  /**
+   * Coloca varias capas de golpe en una zona (plantillas) como UN solo paso de historial: `replace` quita
+   * antes lo que hubiera en esa zona, `add` las apila encima. Activa la zona y selecciona `selectId`.
+   */
+  applyLayers: (input: { areaId: string; layers: Layer[]; mode: 'replace' | 'add'; selectId: string | null }) => void
   patchLayer: (id: string, patch: Partial<Layer>, key?: string) => void
   setLayerWidth: (id: string, widthCm: number) => void
   applyTransform: (id: string, t: { x: number; y: number; rotation: number; scaleX: number; scaleY: number }, key?: string) => void
@@ -249,6 +254,18 @@ export const useEditor = create<EditorState>()((set, get) => {
       const side = round2(Math.min(area.widthCm, area.heightCm) * 0.45)
       const layer: StickerLayer = { ...baseLayer(area, side, side), type: 'sticker', stickerId, fill: sticker.defaultFill }
       return insertLayer(layer, `Pegatina añadida: ${sticker.name}.`)
+    },
+
+    applyLayers: ({ areaId, layers, mode, selectId }) => {
+      const s = get()
+      const area = getArea(productOf(s.productId), areaId)
+      if (!area || layers.length === 0) return
+      const incoming = layers.map((l) => clampLayer(l))
+      commit(mapLayers(s.design, areaId, (ls) => (mode === 'replace' ? incoming : [...ls, ...incoming])), undefined, {
+        viewId: area.viewId,
+        areaId,
+        selectedId: incoming.some((l) => l.id === selectId) ? selectId : null,
+      })
     },
 
     patchLayer: (id, patch, key) => {

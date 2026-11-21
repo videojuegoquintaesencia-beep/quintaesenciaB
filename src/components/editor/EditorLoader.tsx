@@ -12,6 +12,6 @@ const Editor = dynamic(() => import('./Editor'), {
   ),
 })
 
-export function EditorLoader(props: { productId: ProductId; colorParam?: string; lineParam?: string }) {
+export function EditorLoader(props: { productId: ProductId; colorParam?: string; lineParam?: string; templateParam?: string }) {
   return <Editor {...props} />
 }

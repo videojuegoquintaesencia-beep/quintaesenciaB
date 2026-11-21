@@ -33,5 +33,5 @@ export default async function EditorPage({ params, searchParams }: Props) {
   const product = getProduct(producto)
   if (!product) notFound()
   const query = await searchParams
-  return <EditorLoader productId={product.id} colorParam={first(query.color)} lineParam={first(query.linea)} />
+  return <EditorLoader productId={product.id} colorParam={first(query.color)} lineParam={first(query.linea)} templateParam={first(query.plantilla)} />
 }

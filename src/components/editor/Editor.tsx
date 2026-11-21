@@ -1,22 +1,25 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Layers, ImagePlus, Receipt, Shirt, Smile, Type } from 'lucide-react'
+import { Layers, ImagePlus, LayoutTemplate, Receipt, Shirt, Smile, Type } from 'lucide-react'
 import { getColor, getProduct, getView, type ProductId } from '@/config/products'
 import { emptyDesign, type Design } from '@/lib/design'
 import { useCart } from '@/lib/cart-store'
+import { useTemplateFlow } from '@/lib/editor/apply-template'
 import { loadDraft, saveDraft } from '@/lib/editor/draft'
 import { ensureFont } from '@/lib/editor/fonts'
 import { useEditor, type EditorTab } from '@/lib/editor/store'
 import { formatEUR, unidades } from '@/lib/format'
 import { totalQuantity } from '@/lib/pricing'
+import { getTemplate, templateFits } from '@/lib/templates'
 import { cn } from '@/lib/cn'
 import { CanvasNotices, EmptyCanvasHint } from './CanvasNotices'
-import { CartDialog, ConfirmStartOver } from './Dialogs'
+import { CartDialog, ConfirmApplyTemplate, ConfirmStartOver } from './Dialogs'
 import { EditorCanvas } from './EditorCanvas'
 import { LayersPanel } from './panels/LayersPanel'
 import { ProductPanel } from './panels/ProductPanel'
 import { StickersPanel } from './panels/StickersPanel'
 import { BlockerMessage, BLOCKER_ID, CartButton, SummaryPanel } from './panels/SummaryPanel'
+import { TemplatesPanel } from './panels/TemplatesPanel'
 import { TextPanel } from './panels/TextPanel'
 import { UploadPanel } from './panels/UploadPanel'
 import { TabBar, type TabDef } from './TabBar'
@@ -36,6 +39,7 @@ type Layout = 'stack' | 'split' | 'wide'
 
 const TABS: TabDef<EditorTab>[] = [
   { id: 'producto', label: 'Producto', icon: Shirt },
+  { id: 'plantillas', label: 'Plantillas', icon: LayoutTemplate },
   { id: 'subir', label: 'Subir', icon: ImagePlus },
   { id: 'texto', label: 'Texto', icon: Type },
   { id: 'pegatinas', label: 'Pegatinas', icon: Smile },
@@ -55,8 +59,20 @@ function useMediaQuery(query: string): boolean {
   return matches
 }
 
+/**
+ * Entrada con `?plantilla=<id>` (desde la ficha de producto): se aplica al arrancar; si había un borrador con
+ * elementos, el flujo pregunta antes. El parámetro se quita de la URL para que recargar no vuelva a preguntar.
+ */
+function bootTemplate(productId: ProductId, templateId: string) {
+  const template = getTemplate(templateId)
+  if (template && templateFits(template, productId)) useTemplateFlow.getState().request(template)
+  const url = new URL(window.location.href)
+  url.searchParams.delete('plantilla')
+  window.history.replaceState(null, '', url)
+}
+
 /** Carga el diseño inicial: línea del carrito (edición), borrador guardado o diseño vacío. */
-function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: string) {
+function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: string, templateParam?: string) {
   const ready = useEditor((s) => s.ready && s.productId === productId)
   const started = useRef(false)
 
@@ -87,14 +103,17 @@ function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: st
       const store = useEditor.getState()
       store.init({ productId, design, sizes, editLineId: line?.id ?? null })
       store.remeasureAll()
+      // Al editar una línea del carrito la plantilla se ignora: el cliente viene a retocar un diseño concreto.
+      if (templateParam && !line) bootTemplate(productId, templateParam)
     })
     return () => {
       // Al salir (o en el doble montaje de desarrollo) se descarta el arranque y se vuelve a empezar limpio.
       cancelled = true
       started.current = false
       useEditor.setState({ ready: false })
+      useTemplateFlow.getState().cancel()
     }
-  }, [productId, colorParam, lineParam])
+  }, [productId, colorParam, lineParam, templateParam])
 
   return ready
 }
@@ -123,8 +142,18 @@ function useDraftAutosave(productId: ProductId, enabled: boolean) {
   }, [productId, enabled])
 }
 
-export default function Editor({ productId, colorParam, lineParam }: { productId: ProductId; colorParam?: string; lineParam?: string }) {
-  const ready = useBootEditor(productId, colorParam, lineParam)
+export default function Editor({
+  productId,
+  colorParam,
+  lineParam,
+  templateParam,
+}: {
+  productId: ProductId
+  colorParam?: string
+  lineParam?: string
+  templateParam?: string
+}) {
+  const ready = useBootEditor(productId, colorParam, lineParam, templateParam)
   const editLineId = useEditor((s) => s.editLineId)
   useDraftAutosave(productId, ready && !editLineId)
   useEditorKeys()
@@ -169,6 +198,12 @@ function EditorShell({ productId }: { productId: ProductId }) {
   )
   const activeTab: EditorTab = wide && tab === 'resumen' ? 'producto' : tab
   const setTab = useEditor.getState().setTab
+  const panelRef = useRef<HTMLDivElement>(null)
+  // Cada pestaña empieza arriba: el contenedor es el mismo para todas y, si no, heredaría el desplazamiento de la
+  // anterior (p. ej. el campo de texto quedaría fuera de la vista al aplicar una plantilla desde el final de la lista).
+  useEffect(() => {
+    panelRef.current?.scrollTo({ top: 0 })
+  }, [activeTab])
 
   const addLabel = editLineId ? 'Guardar cambios' : 'Añadir al carrito'
   const working = cart.state.phase === 'working'
@@ -223,6 +258,7 @@ function EditorShell({ productId }: { productId: ProductId }) {
           className="shrink-0 border-b-2 border-ink"
         />
         <div
+          ref={panelRef}
           role="tabpanel"
           id={`ed-panel-${activeTab}`}
           aria-labelledby={`ed-tab-${activeTab}`}
@@ -230,6 +266,7 @@ function EditorShell({ productId }: { productId: ProductId }) {
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
         >
           {activeTab === 'producto' && <ProductPanel />}
+          {activeTab === 'plantillas' && <TemplatesPanel />}
           {activeTab === 'subir' && <UploadPanel images={images} />}
           {activeTab === 'texto' && <TextPanel />}
           {activeTab === 'pegatinas' && <StickersPanel />}
@@ -281,6 +318,7 @@ function EditorShell({ productId }: { productId: ProductId }) {
 
       <CartDialog state={cart.state} onClose={cart.close} onRetry={cart.run} />
       <ConfirmStartOver open={confirmReset} onClose={() => setConfirmReset(false)} onConfirm={() => useEditor.getState().startOver()} />
+      <ConfirmApplyTemplate />
     </div>
   )
 }

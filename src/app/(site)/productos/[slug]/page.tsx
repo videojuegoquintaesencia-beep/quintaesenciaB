@@ -15,6 +15,7 @@ import { ProductPricing } from '@/components/catalog/ProductPricing'
 import { ProductSelectionProvider } from '@/components/catalog/ProductSelection'
 import { RelatedProducts } from '@/components/catalog/RelatedProducts'
 import { ShippingSummary } from '@/components/catalog/ShippingSummary'
+import { TemplateIdeas } from '@/components/catalog/TemplateIdeas'
 import { CATEGORY_LABELS, seoTitle, truncate } from '@/components/catalog/appearance'
 import { productFaqs } from '@/components/catalog/product-faqs'
 import { JsonLd } from '@/components/site/JsonLd'
@@ -138,6 +139,14 @@ export default async function ProductPage({ params }: Params) {
           </div>
         </div>
       </div>
+
+      <Section id="plantillas" aria-labelledby="plantillas-titulo" tone="violet" className="scroll-mt-20 border-t-2 border-ink">
+        <SectionHeading id="plantillas-titulo" eyebrow="Ideas" title="Empieza con una plantilla">
+          ¿Sin tiempo para diseñar? Elige un diseño listo para tu {product.name.toLowerCase()} y cámbiale el texto, los colores y el tamaño en el
+          personalizador.
+        </SectionHeading>
+        <TemplateIdeas />
+      </Section>
 
       <Section id="precio" aria-labelledby="precio-titulo" tone="white" className="scroll-mt-20 border-y-2 border-ink">
         <SectionHeading id="precio-titulo" eyebrow="Precio" title="Cómo se calcula el precio">

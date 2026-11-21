@@ -40,12 +40,18 @@ export function textConfig(layer: TextLayer, ppc: number): TextConfig {
   }
 }
 
-/** Mide una capa de texto: devuelve su caja en cm (incluye contorno y margen). */
+/**
+ * Mide una capa de texto: devuelve su caja en cm (incluye contorno y margen).
+ * La caja se redondea hacia ARRIBA con 0,1 mm de holgura: Konva recorta la última letra (o la última línea)
+ * en cuanto el texto supera su caja aunque sea por una milésima, y redondear al más cercano la dejaba corta
+ * la mitad de las veces.
+ */
 export function measureText(layer: TextLayer): { width: number; height: number } {
   const node = new Konva.Text(textConfig(layer, MEASURE_PPC))
   const size = { width: node.width() / MEASURE_PPC, height: node.height() / MEASURE_PPC }
   node.destroy()
-  return { width: Math.max(0.3, Math.round(size.width * 100) / 100), height: Math.max(0.3, Math.round(size.height * 100) / 100) }
+  const up = (cm: number) => Math.max(0.3, Math.ceil(cm * 100) / 100 + 0.01)
+  return { width: up(size.width), height: up(size.height) }
 }
 
 /** Devuelve la capa con `width`/`height` recalculados. */

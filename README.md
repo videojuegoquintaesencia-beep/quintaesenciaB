@@ -13,7 +13,7 @@ equipos y eventos**.
 | Área | Rutas | Notas |
 | --- | --- | --- |
 | Web pública | `/`, `/productos`, `/productos/[slug]`, `/como-funciona`, `/preguntas-frecuentes` | Ilustraciones SVG propias de cada producto, SEO y datos estructurados |
-| Personalizador | `/personalizar`, `/personalizar/[producto]` | Editor Konva: imágenes, texto (9 fuentes), 20 pegatinas, capas, deshacer/rehacer, precio en vivo, archivo de impresión PNG transparente a 300 dpi |
+| Personalizador | `/personalizar`, `/personalizar/[producto]` | Editor Konva: plantillas por ocasión, imágenes, texto (9 fuentes), 20 pegatinas, capas, deshacer/rehacer, precio en vivo, archivo de impresión PNG transparente a 300 dpi |
 | Compra | `/carrito`, `/checkout`, `/pedido/[id]`, `/seguimiento` | Precio recalculado siempre en el servidor, envío, IVA, PayPal, seguimiento por enlace con token |
 | Empresas | `/empresas`, `/contacto` | Formulario de presupuesto con adjuntos y formulario de contacto |
 | Legal | `/legal/aviso-legal`, `/legal/privacidad`, `/legal/cookies`, `/legal/condiciones` | Plantillas generales. **Deben revisarlas un profesional** |
@@ -171,6 +171,29 @@ Decisiones técnicas que conviene conocer:
   y no usan *nonce*), HSTS y COOP. Si cambias el SDK de PayPal o añades servicios externos, ajusta la CSP.
 - Los pedidos tienen un token público para el enlace de seguimiento (`/pedido/<id>?t=<token>`); la consulta manual
   pide número de pedido y email.
+
+### Plantillas de diseño
+
+El editor tiene una pestaña **Plantillas** con diseños listos (texto + pegatinas) agrupados por ocasión; la ficha de
+cada producto destaca tres o cuatro y enlaza a `/personalizar/<producto>?plantilla=<id>`, que la aplica al arrancar (si
+había un borrador con elementos, pregunta antes).
+
+- **Dónde se definen:** `src/lib/templates.ts` (código puro, sin React ni Konva). Cada plantilla tiene `id`, `name`,
+  `occasion`, `products` (`'all'` o una lista) y dos composiciones en una caja normalizada de 0 a 1: `portrait` para
+  zonas verticales (frente de camiseta y sudadera) y `landscape` para las apaisadas (frontal de gorra, envolvente de
+  taza). `build()` encaja la caja en el 86 % de la zona, mide los textos y devuelve capas normales del diseño: a partir
+  de ahí se editan como cualquier otra (mover, cambiar texto, color, fuente, deshacer).
+- **Colores:** `'auto'` es tinta oscura sobre prendas claras y blanca sobre oscuras (`isDarkSurface`); un color fijo que no
+  contraste con la prenda recibe un contorno automático (textos) o pasa a `'auto'` (pegatinas).
+- **Cómo añadir una:** copia una entrada de `TEMPLATES`, cambia el `id` (único), el nombre, la ocasión y las dos
+  composiciones (`stack()` reparte líneas en vertical; `sticker()` coloca una pegatina de `src/lib/stickers.ts`; `text()`
+  es un texto con caja explícita). Marca con `editable: true` el texto de ejemplo («TU NOMBRE»): es el que queda
+  seleccionado, con el campo de texto enfocado, al aplicar la plantilla. Para destacarla en una ficha, añade su id a
+  `FEATURED_TEMPLATES`; si usa una fuente nueva, importa su CSS en `src/components/catalog/TemplateIdeas.tsx`.
+- **Miniaturas:** en el editor se dibujan fuera de pantalla con Konva sobre el producto y color actuales
+  (`src/lib/editor/template-thumbs.ts`, con caché en memoria y bajo demanda); en la ficha de producto, y como repuesto
+  si Konva fallara, se usa un SVG puro (`src/components/templates/TemplateSvgThumb.tsx`) con una medición aproximada
+  de los textos.
 - El panel usa una cookie de sesión firmada (JWT, 12 h, `HttpOnly`, prefijo `__Host-` en producción) y limita los
   intentos de acceso fallidos. Cerrar sesión revoca todas las sesiones abiertas.
 
