@@ -267,7 +267,7 @@ export function OrderItemCard({
         </h3>
         <p className="text-sm font-bold">
           {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} · {formatEUR(item.totalCents)}
-          {item.discountPct > 0 && <span className="font-semibold text-ink-soft"> (−{item.discountPct}% por volumen)</span>}
+          {item.discountPct > 0 && <span className="font-semibold text-ink-soft"> (−{formatNumber(item.discountPct)} % por volumen)</span>}
         </p>
       </header>
 

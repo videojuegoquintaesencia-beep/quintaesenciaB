@@ -166,7 +166,9 @@ function createDbClient(): Client {
       /* ignorar: libsql informará si no puede abrir el archivo */
     }
   }
-  return createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined })
+  // `timeout` es el busy timeout de SQLite en archivo: sin él, dos escrituras a la vez desde conexiones distintas
+  // fallan al instante con SQLITE_BUSY (p. ej. una factura numerándose mientras entra un pedido). Con 5 s, la segunda espera.
+  return createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined, timeout: 5000 })
 }
 
 export async function getDb(): Promise<Client> {

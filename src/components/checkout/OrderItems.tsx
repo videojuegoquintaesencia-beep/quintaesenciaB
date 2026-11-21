@@ -37,7 +37,8 @@ export function OrderItems({ order }: { order: Order }) {
               />
             )}
             <div className="min-w-0 flex-1">
-              <p className="font-extrabold [overflow-wrap:anywhere]">{orderItemTitle(it)}</p>
+              {/* En las líneas con diseño el color ya va en la línea siguiente (con su muestra): el título es solo el producto. */}
+              <p className="font-extrabold [overflow-wrap:anywhere]">{isQuoteItem(it) ? orderItemTitle(it) : it.productName}</p>
               {isQuoteItem(it) ? (
                 <p className="text-sm text-ink-soft">
                   {quoteLineNote(order.quoteNumber)}
