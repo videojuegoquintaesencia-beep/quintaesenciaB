@@ -9,6 +9,10 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
     "seed:demo": "node scripts/seed-demo.mjs"
   },
   "engines": {
