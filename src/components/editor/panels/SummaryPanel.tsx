@@ -72,7 +72,7 @@ export function Quantities() {
           )
         })}
       </ul>
-      {product.sizeSurchargesCents && (
+      {Object.keys(product.sizeSurchargesCents ?? {}).length > 0 && (
         <p className="field-hint">Las tallas con suplemento se suman por unidad.</p>
       )}
     </div>
@@ -110,7 +110,7 @@ export function SummaryPanel() {
         </p>
         {next && (
           <p className="mt-1 rounded-xl border-2 border-ink bg-yellow-soft p-2.5 text-sm font-bold">
-            Con {next.minQty} unidades, {next.pct}&nbsp;% de descuento
+            Con {next.minQty} unidades, {formatNumber(next.pct)}&nbsp;% de descuento
             {qty > 0 ? ` (te faltan ${next.minQty - qty})` : ''}.
           </p>
         )}
@@ -145,7 +145,7 @@ export function SummaryPanel() {
                   <Row label={`Suplemento de talla (${sizeSurchargeLines.join(', ')})`} value={formatEUR(price.sizeSurchargeCents)} />
                 )}
                 {price.discountCents > 0 && (
-                  <Row label={`Descuento por volumen (${price.discountPct}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
+                  <Row label={`Descuento por volumen (${formatNumber(price.discountPct)}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
                 )}
               </dl>
               <div className="mt-1 border-t-2 border-ink pt-1">

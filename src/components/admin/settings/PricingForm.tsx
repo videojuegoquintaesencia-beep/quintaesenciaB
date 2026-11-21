@@ -305,7 +305,7 @@ export function PricingForm({ initial, overridden: initialOverridden }: { initia
                           <SettingsInput
                             id={id(`tier-${area.id}-${i}-cm2`)}
                             label={i === 0 ? 'Hasta' : <span className="sr-only">Hasta</span>}
-                            ariaLabel={`Escalón ${i + 1} de ${area.label}: superficie máxima en cm²`}
+                            ariaLabel={`Hasta. Escalón ${i + 1} de ${area.label}: superficie máxima en cm²`}
                             value={tier.upToCm2}
                             onChange={(v) => updateTiers(product.id, area.id, (rows) => rows.map((r, j) => (j === i ? { ...r, upToCm2: v } : r)))}
                             error={errors[`${base}.printTiers.${area.id}.${i}.upToCm2`]}
@@ -316,7 +316,7 @@ export function PricingForm({ initial, overridden: initialOverridden }: { initia
                           <SettingsInput
                             id={id(`tier-${area.id}-${i}-eur`)}
                             label={i === 0 ? 'Precio por unidad' : <span className="sr-only">Precio por unidad</span>}
-                            ariaLabel={`Escalón ${i + 1} de ${area.label}: precio por unidad en euros`}
+                            ariaLabel={`Precio por unidad. Escalón ${i + 1} de ${area.label}: precio por unidad en euros`}
                             value={tier.cents}
                             onChange={(v) => updateTiers(product.id, area.id, (rows) => rows.map((r, j) => (j === i ? { ...r, cents: v } : r)))}
                             error={errors[`${base}.printTiers.${area.id}.${i}.cents`]}
@@ -377,7 +377,7 @@ export function PricingForm({ initial, overridden: initialOverridden }: { initia
               <SettingsInput
                 id={`${uid}-disc-${i}-qty`}
                 label={i === 0 ? 'Desde' : <span className="sr-only">Desde</span>}
-                ariaLabel={`Tramo ${i + 1}: unidades desde las que se aplica`}
+                ariaLabel={`Desde. Tramo ${i + 1}: unidades desde las que se aplica`}
                 value={row.minQty}
                 onChange={(v) => updateDiscounts((rows) => rows.map((r, j) => (j === i ? { ...r, minQty: v } : r)))}
                 error={errors[`quantityDiscounts.${i}.minQty`]}
@@ -388,7 +388,7 @@ export function PricingForm({ initial, overridden: initialOverridden }: { initia
               <SettingsInput
                 id={`${uid}-disc-${i}-pct`}
                 label={i === 0 ? 'Descuento' : <span className="sr-only">Descuento</span>}
-                ariaLabel={`Tramo ${i + 1}: porcentaje de descuento`}
+                ariaLabel={`Descuento. Tramo ${i + 1}: porcentaje de descuento`}
                 value={row.pct}
                 onChange={(v) => updateDiscounts((rows) => rows.map((r, j) => (j === i ? { ...r, pct: v } : r)))}
                 error={errors[`quantityDiscounts.${i}.pct`]}

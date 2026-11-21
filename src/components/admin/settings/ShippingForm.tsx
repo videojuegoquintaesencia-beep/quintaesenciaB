@@ -53,6 +53,11 @@ function parseDraft(d: Draft): { value: ShippingSettings | null; errors: FieldEr
     carrierLabel: d.carrierLabel.trim(),
     deliveryZonesLabel: d.deliveryZonesLabel.trim(),
   }
+  // El nombre de las zonas excluidas aparece en los mensajes del checkout («Aún no enviamos a …»): si hay prefijos
+  // excluidos no puede quedar vacío, aunque el esquema lo permita.
+  if (candidate.excludedPostalPrefixes.length > 0 && !candidate.excludedZonesLabel) {
+    errors.excludedZonesLabel = 'Escribe el nombre de las zonas excluidas: aparece en los mensajes del checkout.'
+  }
   if (Object.keys(errors).length > 0) return { value: null, errors }
   const parsed = shippingSchema.safeParse(candidate)
   if (!parsed.success) return { value: null, errors: fieldErrors(parsed.error) }

@@ -1,4 +1,5 @@
 import type { QuantityDiscount } from '@/config/products'
+import { formatNumber } from '@/lib/format'
 
 /** Tabla de descuentos por volumen: tramos calculados a partir de los descuentos efectivos (editables en el panel). */
 export function DiscountTable({ discounts }: { discounts: readonly QuantityDiscount[] }) {
@@ -21,7 +22,7 @@ export function DiscountTable({ discounts }: { discounts: readonly QuantityDisco
           {rows.map((r, i) => (
             <tr key={r.range} className={i < rows.length - 1 ? 'border-b border-ink/25' : undefined}>
               <th scope="row" className="p-3.5 font-bold">{r.range}</th>
-              <td className="p-3.5 text-right font-display text-xl font-semibold">{r.pct === 0 ? 'Sin descuento' : `${r.pct} %`}</td>
+              <td className="p-3.5 text-right font-display text-xl font-semibold">{r.pct === 0 ? 'Sin descuento' : `${formatNumber(r.pct)} %`}</td>
             </tr>
           ))}
         </tbody>

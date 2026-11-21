@@ -6,7 +6,7 @@
 import 'server-only'
 import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, ownerLine, sendMail, type MailResult } from '../email'
-import { formatEUR, unidades } from '../format'
+import { formatEUR, formatNumber, unidades } from '../format'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL } from '../order-status'
 import { getCatalog } from '../settings'
 import { ENTITY_WORD } from './names'
@@ -51,7 +51,7 @@ function itemsHtml(order: Order): string {
     .map((it) => {
       const discount =
         it.discountCents > 0
-          ? `<br><span style="font-size:13px;color:${MUTED}">Descuento por cantidad (${it.discountPct}\u00a0%): −${esc(formatEUR(it.discountCents))}</span>`
+          ? `<br><span style="font-size:13px;color:${MUTED}">Descuento por cantidad (${formatNumber(it.discountPct)}\u00a0%): −${esc(formatEUR(it.discountCents))}</span>`
           : ''
       return `<tr>
         <td style="padding:10px 0;border-bottom:1px solid ${LINE};vertical-align:top">
@@ -84,7 +84,7 @@ function addressHtml(order: Order): string {
 function itemsText(order: Order): string {
   return order.items
     .map((it) => {
-      const discount = it.discountCents > 0 ? ` (descuento ${it.discountPct}\u00a0%: −${formatEUR(it.discountCents)})` : ''
+      const discount = it.discountCents > 0 ? ` (descuento ${formatNumber(it.discountPct)}\u00a0%: −${formatEUR(it.discountCents)})` : ''
       return `- ${it.productName}, ${it.colorName} · ${sizesText(it)} · ${formatEUR(it.totalCents)}${discount}`
     })
     .join('\n')

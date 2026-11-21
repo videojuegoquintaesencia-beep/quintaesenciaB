@@ -6,7 +6,7 @@
  */
 import { site } from '@/config/site'
 import { fromPriceCents } from '@/config/products'
-import { formatEUR } from './format'
+import { formatEUR, formatNumber } from './format'
 import type { Catalog } from './settings-schema'
 
 export interface FaqItem {
@@ -57,7 +57,7 @@ export function faqGroups(catalog: Catalog): FaqGroup[] {
         answer: [
           'No. Puedes pedir una sola unidad, con tu diseño y tu talla.',
           firstDiscount
-            ? `Si pides más, aplicamos un descuento automático por volumen a cada línea del pedido: desde ${firstDiscount.minQty} unidades hasta un ${topDiscount.pct}\u00a0% a partir de ${topDiscount.minQty}. Lo ves reflejado en el precio mientras diseñas.`
+            ? `Si pides más, aplicamos un descuento automático por volumen a cada línea del pedido: desde ${firstDiscount.minQty} unidades hasta un ${formatNumber(topDiscount.pct)}\u00a0% a partir de ${topDiscount.minQty}. Lo ves reflejado en el precio mientras diseñas.`
             : '',
         ].filter(Boolean),
       },
@@ -268,7 +268,7 @@ export function faqGroups(catalog: Catalog): FaqGroup[] {
         id: 'precios-empresas',
         question: '¿Hacéis precios especiales para empresas, equipos o eventos?',
         answer: [
-          `Aplicamos descuentos por volumen automáticos, de ${firstDiscount?.pct ?? 0}\u00a0% a ${topDiscount.pct}\u00a0% según las unidades de cada línea del pedido. Los tienes en la tabla de [empresas](/empresas#precios-por-volumen).`,
+          `Aplicamos descuentos por volumen automáticos, de ${formatNumber(firstDiscount?.pct ?? 0)}\u00a0% a ${formatNumber(topDiscount.pct)}\u00a0% según las unidades de cada línea del pedido. Los tienes en la tabla de [empresas](/empresas#precios-por-volumen).`,
         ],
       },
       {

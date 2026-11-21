@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, Building2, Wand2 } from 'lucide-react'
 import { ProductShowcase } from '@/components/mockups'
-import { formatEUR } from '@/lib/format'
+import { formatEUR, formatNumber } from '@/lib/format'
 import type { Catalog } from '@/lib/settings-schema'
 import { Sparkle, Star } from './Decor'
 
@@ -56,7 +56,7 @@ export function Hero({ catalog }: { catalog: Catalog }) {
           </h1>
           <p className="mt-6 max-w-xl text-lg text-ink-soft sm:text-xl">
             Sube tu logo o tu foto, añade texto y pegatinas y mira cómo queda antes de pedir. Lo imprimimos con colores vivos y te lo
-            enviamos a casa. Y si pides muchas unidades, tienes descuentos de hasta un {maxDiscount}&nbsp;%.
+            enviamos a casa. Y si pides muchas unidades, tienes descuentos de hasta un {formatNumber(maxDiscount)}&nbsp;%.
           </p>
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
             <Link href="/personalizar" className="btn btn-primary btn-lg">

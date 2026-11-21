@@ -40,7 +40,8 @@ La dueña cambia estos valores sin tocar código, en **`/admin/ajustes/precios`*
   enseña el «precio desde» de cada producto mientras se edita.
 - **Envíos**: tarifa, importe a partir del cual el envío es gratis, suplemento de Baleares, prefijos de código postal
   a los que no se envía (lista de dos dígitos con el nombre de la provincia), y los textos que cita la web (zonas
-  excluidas, transportista, zonas de entrega).
+  excluidas, transportista, zonas de entrega). Mientras haya prefijos excluidos, el nombre de las zonas excluidas es
+  obligatorio: aparece en los mensajes del checkout. Los descuentos admiten decimales y se muestran a la española («7,5 %»).
 - **Plazos de producción**: días laborables mínimo y máximo.
 
 Cada sección se guarda completa (`POST /api/admin/settings/<sección>`), se valida con los mismos esquemas zod en el

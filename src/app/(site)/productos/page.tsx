@@ -7,7 +7,7 @@ import { CategoryFilter, parseCategory } from '@/components/catalog/CategoryFilt
 import { ProductCard } from '@/components/catalog/ProductCard'
 import { CATEGORY_LABELS } from '@/components/catalog/appearance'
 import { JsonLd } from '@/components/site/JsonLd'
-import { formatEUR } from '@/lib/format'
+import { formatEUR, formatNumber } from '@/lib/format'
 import { OG_IMAGES } from '@/lib/og-meta'
 import { getCatalog } from '@/lib/settings'
 
@@ -98,7 +98,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
               <div>
                 <h3 className="text-xl">Descuentos por volumen</h3>
                 <p className="mt-1 text-ink-soft">
-                  Hasta un {maxDiscount}&nbsp;% menos cuando pides muchas unidades iguales.{' '}
+                  Hasta un {formatNumber(maxDiscount)}&nbsp;% menos cuando pides muchas unidades iguales.{' '}
                   <Link href="/empresas" className="inline-flex items-center gap-1 font-bold text-violet-deep underline underline-offset-4">
                     Pedidos para empresas <ArrowRight aria-hidden="true" size={15} />
                   </Link>

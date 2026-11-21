@@ -107,7 +107,8 @@ export function SettingsInput({
   /** Etiqueta completa para el lector cuando la visible es corta (p. ej. "XXL"). */
   ariaLabel?: string
 }) {
-  const describedBy = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(' ') || undefined
+  // La ayuda solo se referencia cuando está en el DOM (con error se oculta para no duplicar el mensaje).
+  const describedBy = [hint && !error ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(' ') || undefined
   return (
     <div className={className}>
       <label htmlFor={id} className="label">

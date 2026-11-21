@@ -1,6 +1,6 @@
 import type { Product } from '@/config/products'
 import { site } from '@/config/site'
-import { formatEUR } from '@/lib/format'
+import { formatEUR, formatNumber } from '@/lib/format'
 import type { Catalog } from '@/lib/settings-schema'
 import { sizeLabel } from './appearance'
 
@@ -58,7 +58,7 @@ export function productFaqs(product: Product, catalog: Catalog): Faq[] {
     {
       question: '¿Hay un mínimo de unidades?',
       answer: first
-        ? `No, puedes pedir una sola unidad. Si pides varias iguales, aplicamos un descuento desde ${first.minQty} unidades (${first.pct}\u00a0%) que sube hasta el ${last.pct}\u00a0% desde ${last.minQty} unidades.`
+        ? `No, puedes pedir una sola unidad. Si pides varias iguales, aplicamos un descuento desde ${first.minQty} unidades (${formatNumber(first.pct)}\u00a0%) que sube hasta el ${formatNumber(last.pct)}\u00a0% desde ${last.minQty} unidades.`
         : 'No, puedes pedir una sola unidad.',
     },
     {

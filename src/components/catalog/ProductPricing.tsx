@@ -68,7 +68,7 @@ export function ProductPricing({ product, catalog }: { product: Product; catalog
         </li>
         <li className="card-flat bg-teal-soft p-5">
           <p className="font-display text-sm font-semibold uppercase tracking-wide">− El descuento</p>
-          <p className="mt-2 font-display text-3xl font-bold">hasta {maxDiscount}&nbsp;%</p>
+          <p className="mt-2 font-display text-3xl font-bold">hasta {formatNumber(maxDiscount)}&nbsp;%</p>
           <p className="mt-1 text-ink-soft">si pides varias unidades iguales.</p>
         </li>
       </ol>
@@ -129,7 +129,7 @@ export function ProductPricing({ product, catalog }: { product: Product; catalog
             {discounts.map((d, i) => (
               <tr key={d.minQty} className="border-b border-ink/15 last:border-0">
                 <th scope="row" className="px-4 py-2.5 font-bold">{unitsRange(discounts, i)}</th>
-                <td className="px-4 py-2.5 text-right font-display text-lg font-semibold">{d.pct === 0 ? 'Sin descuento' : `${d.pct}\u00a0%`}</td>
+                <td className="px-4 py-2.5 text-right font-display text-lg font-semibold">{d.pct === 0 ? 'Sin descuento' : `${formatNumber(d.pct)}\u00a0%`}</td>
               </tr>
             ))}
           </tbody>
@@ -160,7 +160,7 @@ export function ProductPricing({ product, catalog }: { product: Product; catalog
             {example.qty} × {formatEUR(example.unitCents)} = {formatEUR(example.grossCents)}
             {example.pct > 0 && (
               <>
-                , menos un {example.pct}&nbsp;% = <strong className="text-ink">{formatEUR(example.totalCents)}</strong>
+                , menos un {formatNumber(example.pct)}&nbsp;% =<strong className="text-ink">{formatEUR(example.totalCents)}</strong>
               </>
             )}
             .
