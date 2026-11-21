@@ -33,7 +33,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     } catch (err) {
       sent = { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
-    if (sent.ok) await recordInvoiceSent(target.id, doc.number, order.email, !!sent.simulated)
+    if (sent.ok) await recordInvoiceSent(target.id, doc, order.email, !!sent.simulated)
     revalidatePath(`/admin/pedidos/${target.id}`)
     return Response.json({
       ok: true,

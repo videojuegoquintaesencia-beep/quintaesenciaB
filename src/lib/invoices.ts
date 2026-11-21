@@ -22,6 +22,7 @@ import {
   invoiceYear,
   parseInvoiceRecord,
   rectificationReason,
+  type InvoiceDocument,
   type InvoiceKind,
   type InvoiceRecord,
 } from './invoice-document'
@@ -106,7 +107,7 @@ async function issueInvoiceOnce(orderId: string): Promise<IssueResult> {
   const tx = await db.transaction('write')
   try {
     // Dentro de la transacción se vuelve a mirar el pedido: otra instancia puede haberlo facturado hace un instante.
-    const current = await tx.execute({ sql: `SELECT status, invoice_json FROM orders WHERE id = ?`, args: [orderId] })
+    const current = await tx.execute({ sql: `SELECT status, invoice_number, invoice_json FROM orders WHERE id = ?`, args: [orderId] })
     const row = current.rows[0]
     if (!row) {
       await tx.rollback()
@@ -116,6 +117,16 @@ async function issueInvoiceOnce(orderId: string): Promise<IssueResult> {
     if (existing) {
       await tx.rollback()
       return { ok: true, record: existing, created: false }
+    }
+    // Número asignado pero sin copia legible (p. ej. una fila tocada a mano): no se consume otro número ni se
+    // pisa el existente; el UPDATE de abajo tampoco lo haría (exige invoice_number IS NULL).
+    if (row.invoice_number != null) {
+      await tx.rollback()
+      return {
+        ok: false,
+        error: `El pedido ya tiene el número ${String(row.invoice_number)}, pero su copia guardada no se puede leer. Revísalo en la base de datos.`,
+        status: 409,
+      }
     }
     const status = String(row.status) as Order['status']
     if (!INVOICEABLE_STATUSES.includes(status)) {
@@ -205,6 +216,12 @@ async function issueRectificationOnce(orderId: string): Promise<IssueResult> {
 }
 
 /** Deja constancia en el historial de que la factura (o la rectificativa) se envió al cliente. */
-export async function recordInvoiceSent(orderId: string, number: string, to: string, simulated: boolean): Promise<void> {
-  await addOrderEvent(orderId, `Factura ${number} enviada por email a ${to}${simulated ? ' (email simulado: SMTP sin configurar)' : ''}`, 'admin')
+export async function recordInvoiceSent(
+  orderId: string,
+  doc: Pick<InvoiceDocument, 'kind' | 'number'>,
+  to: string,
+  simulated: boolean,
+): Promise<void> {
+  const what = doc.kind === 'rectification' ? 'Factura rectificativa' : 'Factura'
+  await addOrderEvent(orderId, `${what} ${doc.number} enviada por email a ${to}${simulated ? ' (email simulado: SMTP sin configurar)' : ''}`, 'admin')
 }

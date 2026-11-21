@@ -186,7 +186,8 @@ function issuerFrom(settings: Settings): InvoiceIssuer {
     name: business.legalName,
     attention: null,
     taxId: business.taxId,
-    addressLines: [business.registeredAddress],
+    // Sin domicilio en los ajustes no se pinta una línea vacía (el dato es obligatorio: ver «Antes de publicar»).
+    addressLines: [business.registeredAddress].filter(Boolean),
     registry: business.registry || null,
     email: contact.email,
     phone: contact.phone,

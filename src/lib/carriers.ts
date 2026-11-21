@@ -58,7 +58,7 @@ export const OTHER_CARRIER = 'Otro'
 function normalize(value: string): string {
   return value
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[\s_-]+/g, ' ')
     .trim()

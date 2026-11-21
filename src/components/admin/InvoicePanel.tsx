@@ -129,9 +129,9 @@ export function InvoicePanel({
 
   return (
     <Panel title="Factura" id="factura" icon={<FileText size={20} />}>
-      {demo && (
+      {demo && (canIssue || invoice) && (
         <p className="mb-3 text-sm text-ink-soft">
-          Pedido de demostración: la factura saldrá marcada como <strong>«Demostración · sin validez»</strong>.
+          Pedido de demostración: la factura {invoice ? 'está' : 'saldrá'} marcada como <strong>«Demostración · sin validez»</strong>.
         </p>
       )}
 
