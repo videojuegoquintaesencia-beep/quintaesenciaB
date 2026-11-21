@@ -7,7 +7,8 @@ import { JsonLd } from '@/components/content/JsonLd'
 import { PageHero } from '@/components/content/PageHero'
 import { pageMetadata } from '@/components/content/metadata'
 import { whatsappHref } from '@/components/content/contact-info'
-import { FAQ_GROUPS, faqPlainText } from '@/lib/faq'
+import { faqGroups, faqPlainText, type FaqGroup } from '@/lib/faq'
+import { getCatalog } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Preguntas frecuentes',
@@ -16,21 +17,23 @@ export const metadata: Metadata = pageMetadata({
   path: '/preguntas-frecuentes',
 })
 
-const faqJsonLd = {
+const faqJsonLd = (groups: FaqGroup[]) => ({
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
   inLanguage: 'es-ES',
-  mainEntity: FAQ_GROUPS.flatMap((g) =>
+  mainEntity: groups.flatMap((g) =>
     g.items.map((item) => ({
       '@type': 'Question',
       name: item.question,
       acceptedAnswer: { '@type': 'Answer', text: faqPlainText(item.answer) },
     })),
   ),
-}
+})
 
-export default function PreguntasFrecuentesPage() {
+export default async function PreguntasFrecuentesPage() {
   const whatsapp = whatsappHref()
+  // Las respuestas citan importes, plazos y zonas: siempre los efectivos (editables en el panel).
+  const FAQ_GROUPS = faqGroups(await getCatalog())
   return (
     <>
       <PageHero tone="violet" crumbs={[{ label: 'Preguntas frecuentes' }]} eyebrow="Dudas habituales" title="Preguntas frecuentes">
@@ -77,7 +80,7 @@ export default function PreguntasFrecuentesPage() {
           </div>
         </div>
       </Section>
-      <JsonLd data={faqJsonLd} />
+      <JsonLd data={faqJsonLd(FAQ_GROUPS)} />
     </>
   )
 }

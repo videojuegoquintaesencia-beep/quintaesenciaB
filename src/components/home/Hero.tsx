@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { ArrowRight, Building2, Wand2 } from 'lucide-react'
-import { QUANTITY_DISCOUNTS } from '@/config/products'
-import { site } from '@/config/site'
 import { ProductShowcase } from '@/components/mockups'
 import { formatEUR } from '@/lib/format'
+import type { Catalog } from '@/lib/settings-schema'
 import { Sparkle, Star } from './Decor'
 
 const POP_SHADOW = '[filter:drop-shadow(5px_6px_0_rgba(27,19,64,1))]'
@@ -38,12 +37,14 @@ function HeroVisual() {
   )
 }
 
-export function Hero() {
-  const maxDiscount = Math.max(...QUANTITY_DISCOUNTS.map((d) => d.pct))
+/** Portada. Descuentos, plazos y envío salen del catálogo efectivo (editable en el panel). */
+export function Hero({ catalog }: { catalog: Catalog }) {
+  const { production, shipping } = catalog
+  const maxDiscount = Math.max(...catalog.quantityDiscounts.map((d) => d.pct))
   const facts = [
     'Sin mínimo de unidades',
-    `Producción de ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables`,
-    `Envío gratis desde ${formatEUR(site.shipping.freeFromCents, { compact: true })}`,
+    `Producción de ${production.leadDaysMin} a ${production.leadDaysMax} días laborables`,
+    `Envío gratis desde ${formatEUR(shipping.freeFromCents, { compact: true })}`,
   ]
   return (
     <section className="bg-dots-soft overflow-hidden border-b-2 border-ink bg-cream" aria-labelledby="hero-titulo">

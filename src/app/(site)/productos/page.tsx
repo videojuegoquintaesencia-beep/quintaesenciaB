@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight, Building2, Truck, Wand2 } from 'lucide-react'
-import { PRODUCTS, QUANTITY_DISCOUNTS } from '@/config/products'
 import { site } from '@/config/site'
 import { Breadcrumb } from '@/components/catalog/Breadcrumb'
 import { CategoryFilter, parseCategory } from '@/components/catalog/CategoryFilter'
@@ -10,6 +9,7 @@ import { CATEGORY_LABELS } from '@/components/catalog/appearance'
 import { JsonLd } from '@/components/site/JsonLd'
 import { formatEUR } from '@/lib/format'
 import { OG_IMAGES } from '@/lib/og-meta'
+import { getCatalog } from '@/lib/settings'
 
 const title = 'Productos personalizables: ropa, gorras y tazas'
 const description =
@@ -25,8 +25,11 @@ export const metadata: Metadata = {
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const { categoria } = await searchParams
   const active = parseCategory(categoria)
-  const products = active ? PRODUCTS.filter((p) => p.category === active) : PRODUCTS
-  const maxDiscount = Math.max(...QUANTITY_DISCOUNTS.map((d) => d.pct))
+  // Precios "desde", descuentos, envío y plazos efectivos (editables en el panel).
+  const catalog = await getCatalog()
+  const { shipping, production } = catalog
+  const products = active ? catalog.products.filter((p) => p.category === active) : catalog.products
+  const maxDiscount = Math.max(...catalog.quantityDiscounts.map((d) => d.pct))
 
   return (
     <>
@@ -105,10 +108,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             <li className="card flex gap-4 p-5">
               <Truck aria-hidden="true" className="mt-1 shrink-0 text-violet-deep" size={28} />
               <div>
-                <h3 className="text-xl">Envío a {site.shipping.deliveryZonesLabel}</h3>
+                <h3 className="text-xl">Envío a {shipping.deliveryZonesLabel}</h3>
                 <p className="mt-1 text-ink-soft">
-                  Producción de {site.production.leadDaysMin} a {site.production.leadDaysMax} días laborables y {site.shipping.carrierLabel}. Gratis
-                  desde {formatEUR(site.shipping.freeFromCents, { compact: true })}. No enviamos a {site.shipping.excludedZonesLabel} desde la tienda online.
+                  Producción de {production.leadDaysMin} a {production.leadDaysMax} días laborables y {shipping.carrierLabel}. Gratis
+                  desde {formatEUR(shipping.freeFromCents, { compact: true })}. No enviamos a {shipping.excludedZonesLabel} desde la tienda online.
                 </p>
               </div>
             </li>
@@ -121,7 +124,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           '@context': 'https://schema.org',
           '@type': 'ItemList',
           name: 'Productos personalizables',
-          itemListElement: PRODUCTS.map((p, i) => ({
+          itemListElement: catalog.products.map((p, i) => ({
             '@type': 'ListItem',
             position: i + 1,
             name: p.namePlural,

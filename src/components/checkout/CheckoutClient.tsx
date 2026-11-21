@@ -3,6 +3,7 @@ import { TriangleExclamationPoint, Info, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { EmptyCart } from '@/components/cart/CartView'
 import { editHref, lineTitle } from '@/components/cart/line-utils'
 import { usePricedLines } from '@/components/cart/lines'
@@ -21,6 +22,8 @@ import { PaymentSection } from './PaymentSection'
 
 export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; paypalClientId: string }) {
   const router = useRouter()
+  // Reglas de envío efectivas (editables en el panel): zonas excluidas, tarifa y umbral de envío gratis.
+  const { shipping: rules } = useCatalog()
   const { lines, clear, removeLine } = useCart()
   const hydrated = useCartHydrated()
   const priced = usePricedLines(lines)
@@ -47,19 +50,22 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
     })
   }, [])
 
-  const onPostalCodeChange = useCallback((raw: string) => {
-    const cp = raw.replace(/\D/g, '').slice(0, 5)
-    setValues((v) => {
-      const next = { ...v, postalCode: cp }
-      if (cp.length === 5 && isPostalCodeDeliverable(cp)) next.province = provinceFromPostalCode(cp) ?? v.province
-      return next
-    })
-  }, [])
+  const onPostalCodeChange = useCallback(
+    (raw: string) => {
+      const cp = raw.replace(/\D/g, '').slice(0, 5)
+      setValues((v) => {
+        const next = { ...v, postalCode: cp }
+        if (cp.length === 5 && isPostalCodeDeliverable(cp, rules)) next.province = provinceFromPostalCode(cp) ?? v.province
+        return next
+      })
+    },
+    [rules],
+  )
 
   // Tras el primer intento de pago los errores se recalculan mientras el cliente corrige.
   const errors: FormErrors = useMemo(
-    () => (attempted ? { ...validateForm(values), ...serverErrors } : serverErrors),
-    [attempted, values, serverErrors],
+    () => (attempted ? { ...validateForm(values, rules), ...serverErrors } : serverErrors),
+    [attempted, values, rules, serverErrors],
   )
 
   const focusFirstError = useCallback(() => {
@@ -84,7 +90,7 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
         setNotice(null)
         setAttempted(true)
         setServerErrors({})
-        const found = validateForm(valuesRef.current)
+        const found = validateForm(valuesRef.current, rules)
         if (Object.keys(found).length > 0) {
           focusFirstError()
           return false
@@ -114,7 +120,7 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
       onFailure: (f) => setFailure(f),
       onNotice: (m) => setNotice(m),
     }),
-    [processing, clear, router, focusFirstError],
+    [processing, clear, router, focusFirstError, rules],
   )
 
   if (!hydrated) {
@@ -127,6 +133,7 @@ export function CheckoutClient({ mode, paypalClientId }: { mode: PaymentMode; pa
   const totals = computeCartTotals(
     priced.map((p) => p.price?.totalCents ?? 0),
     postalCodeKnown ? cp : undefined,
+    rules,
   )
   const badLines = priced.filter((p) => p.error || failure?.lineIds?.includes(p.line.id))
 

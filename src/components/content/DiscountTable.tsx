@@ -1,9 +1,9 @@
-import { QUANTITY_DISCOUNTS } from '@/config/products'
+import type { QuantityDiscount } from '@/config/products'
 
-/** Tabla de descuentos por volumen: tramos calculados a partir de QUANTITY_DISCOUNTS. */
-export function DiscountTable() {
-  const rows = QUANTITY_DISCOUNTS.map((d, i) => {
-    const next = QUANTITY_DISCOUNTS[i + 1]
+/** Tabla de descuentos por volumen: tramos calculados a partir de los descuentos efectivos (editables en el panel). */
+export function DiscountTable({ discounts }: { discounts: readonly QuantityDiscount[] }) {
+  const rows = discounts.map((d, i) => {
+    const next = discounts[i + 1]
     const range = !next ? `${d.minQty} o más` : next.minQty - 1 === d.minQty ? `${d.minQty}` : `${d.minQty} a ${next.minQty - 1}`
     return { range, pct: d.pct }
   })
@@ -21,7 +21,7 @@ export function DiscountTable() {
           {rows.map((r, i) => (
             <tr key={r.range} className={i < rows.length - 1 ? 'border-b border-ink/25' : undefined}>
               <th scope="row" className="p-3.5 font-bold">{r.range}</th>
-              <td className="p-3.5 text-right font-display text-xl font-semibold">{r.pct === 0 ? 'Sin descuento' : `${r.pct}\u00a0%`}</td>
+              <td className="p-3.5 text-right font-display text-xl font-semibold">{r.pct === 0 ? 'Sin descuento' : `${r.pct} %`}</td>
             </tr>
           ))}
         </tbody>

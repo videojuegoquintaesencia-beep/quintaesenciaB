@@ -1,5 +1,6 @@
 'use client'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { parseDesign, type Design } from '@/lib/design'
 import { getProduct } from '@/config/products'
 import { useCart } from '@/lib/cart-store'
@@ -31,6 +32,12 @@ export function useAddToCart() {
   const [state, setState] = useState<CartState>({ phase: 'idle', progress: { done: 0, total: 0 } })
   const cache = useRef<ExportCache>(new Map())
   const busy = useRef(false)
+  // El precio se comprueba con el catálogo efectivo (el mismo que usa el servidor); por ref para no recrear `run`.
+  const catalog = useCatalog()
+  const catalogRef = useRef(catalog)
+  useEffect(() => {
+    catalogRef.current = catalog
+  }, [catalog])
 
   const run = useCallback(async () => {
     if (busy.current) return
@@ -40,7 +47,7 @@ export function useAddToCart() {
     try {
       const checked = parseDesign(pruneDesign(s.design))
       if (!checked.ok) throw new Error(checked.error)
-      const priced = priceLine({ productId: s.productId, colorId: s.design.colorId, sizes: s.sizes, design: checked.design })
+      const priced = priceLine({ productId: s.productId, colorId: s.design.colorId, sizes: s.sizes, design: checked.design }, catalogRef.current)
       if (!priced.ok) throw new Error(priced.error)
 
       const { previews, printFiles } = await exportDesignFiles(checked.design, cache.current, (progress) =>

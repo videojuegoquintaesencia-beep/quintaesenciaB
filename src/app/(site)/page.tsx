@@ -11,6 +11,7 @@ import { WhyDtf } from '@/components/home/WhyDtf'
 import { contactLinks } from '@/components/site/contact-links'
 import { JsonLd } from '@/components/site/JsonLd'
 import { OG_IMAGES } from '@/lib/og-meta'
+import { getCatalog } from '@/lib/settings'
 
 const title = `${site.name}: camisetas, sudaderas, gorras y tazas personalizadas`
 
@@ -62,16 +63,18 @@ function structuredData() {
   return { organization, website }
 }
 
-export default function HomePage() {
+export default async function HomePage() {
   const { organization, website } = structuredData()
+  // Precios "desde", descuentos, plazos y envío efectivos (editables en el panel).
+  const catalog = await getCatalog()
   return (
     <>
-      <Hero />
-      <ProductsSection />
-      <HowItWorks />
+      <Hero catalog={catalog} />
+      <ProductsSection catalog={catalog} />
+      <HowItWorks catalog={catalog} />
       <WhyDtf />
-      <PersonalizerTeaser />
-      <BusinessStrip />
+      <PersonalizerTeaser catalog={catalog} />
+      <BusinessStrip catalog={catalog} />
       <Inspiration />
       <FinalCta />
       <JsonLd data={organization} />

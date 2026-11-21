@@ -9,6 +9,7 @@ import { PageHero } from '@/components/content/PageHero'
 import { pageMetadata } from '@/components/content/metadata'
 import { socialHref, telHref, whatsappHref } from '@/components/content/contact-info'
 import { site } from '@/config/site'
+import { getCatalog } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Contacto',
@@ -32,10 +33,11 @@ function ContactRow({ icon: Icon, label, children }: { icon: LucideIcon; label: 
 
 const linkClass = 'underline-offset-4 hover:underline'
 
-export default function ContactoPage() {
+export default async function ContactoPage() {
   // `site` es `as const`: se ensancha a string para que los datos que el dueño deje vacíos se oculten.
   const contact: Record<keyof typeof site.contact, string> = site.contact
-  const { shipping } = site
+  // Zonas sin envío efectivas (editables en el panel).
+  const { shipping } = await getCatalog()
   const whatsapp = whatsappHref()
   return (
     <>

@@ -8,6 +8,7 @@ import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, ownerLine, sendMail, type MailResult } from '../email'
 import { formatEUR, unidades } from '../format'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL } from '../order-status'
+import { getCatalog } from '../settings'
 import { ENTITY_WORD } from './names'
 import type { Order, OrderItem } from '../orders'
 
@@ -115,8 +116,9 @@ function legalNoticeParts(order: Order) {
 
 export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
   const url = orderTrackingUrl(order)
-  const owner = await ownerLine()
-  const lead = `de ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables`
+  // Plazos y transportista efectivos (editables en el panel), no los de código.
+  const [owner, { production, shipping }] = await Promise.all([ownerLine(), getCatalog()])
+  const lead = `de ${production.leadDaysMin} a ${production.leadDaysMax} días laborables`
   const demo = isDemo(order)
   const notice = legalNoticeParts(order)
   const demoHtml = demo
@@ -129,7 +131,7 @@ export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
       : `Hemos recibido tu pago de ${formatEUR(order.totalCents)}. Empezamos con tu diseño.`,
     bodyHtml: `${demoHtml}
       <p style="margin:0 0 8px">${esc(ORDER_STATUS_CUSTOMER_TEXT.paid)}</p>
-      <p style="margin:0">Tardamos <strong>${esc(lead)}</strong> en producir tu pedido y después sale por ${esc(site.shipping.carrierLabel)}. Te escribiremos en cuanto cambie su estado.</p>
+      <p style="margin:0">Tardamos <strong>${esc(lead)}</strong> en producir tu pedido y después sale por ${esc(shipping.carrierLabel)}. Te escribiremos en cuanto cambie su estado.</p>
       ${sectionTitle(`Resumen del pedido ${order.number}`)}
       ${itemsHtml(order)}
       ${totalsHtml(order)}
@@ -147,7 +149,7 @@ export async function sendOrderConfirmation(order: Order): Promise<MailResult> {
     `¡Gracias, ${firstName(order)}! Tu pedido ${order.number} está confirmado.`,
     demo ? '\n(Pedido de demostración: no se ha cobrado nada.)' : '',
     `\n${ORDER_STATUS_CUSTOMER_TEXT.paid}`,
-    `Producción: ${lead}, y después envío por ${site.shipping.carrierLabel}.`,
+    `Producción: ${lead}, y después envío por ${shipping.carrierLabel}.`,
     `\nRESUMEN\n${itemsText(order)}\n\n${totalsText(order)}`,
     `\nDIRECCIÓN DE ENVÍO\n${addressLines(order).join('\n')}`,
     `\nINFORMACIÓN IMPORTANTE\nDesistimiento y garantía: ${notice.withdrawal} Condiciones de venta: ${notice.conditionsUrl}`,

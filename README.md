@@ -19,16 +19,43 @@ equipos y eventos**.
 | Legal | `/legal/aviso-legal`, `/legal/privacidad`, `/legal/cookies`, `/legal/condiciones` | Plantillas generales. **Deben revisarlas un profesional** |
 | Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, presupuestos y mensajes |
 
-### Reglas de negocio (están en `src/config/`)
+### Reglas de negocio (valores por defecto en `src/config/`, editables desde el panel)
 
 - Precios en **céntimos de euro, IVA (21 %) incluido**. Precio de una línea = prenda + suplemento de color +
   estampado por zona (escalón según los cm² realmente ocupados) + suplemento de talla; después, descuento por
-  cantidad (0 / 5 / 10 / 15 / 20 % a partir de 1 / 5 / 10 / 25 / 50 unidades).
+  cantidad (de serie: 0 / 5 / 10 / 15 / 20 % a partir de 1 / 5 / 10 / 25 / 50 unidades).
 - Envío 4,95 €, gratis desde 60 €, +3 € a Baleares. No se envía a Canarias, Ceuta ni Melilla desde la tienda online
   (códigos postales 35, 38, 51 y 52): para eso, presupuesto.
 - Producción de 2 a 4 días laborables antes del envío.
-- Productos, colores, tallas, zonas de impresión y tarifas: `src/config/products.ts`.
-  Datos del negocio, envío y plazos: `src/config/site.ts`.
+- Productos, colores, tallas, zonas de impresión y tarifas de serie: `src/config/products.ts`.
+  Datos del negocio, envío y plazos de serie: `src/config/site.ts`.
+
+### Precios, envíos y plazos editables desde el panel
+
+La dueña cambia estos valores sin tocar código, en **`/admin/ajustes/precios`** y **`/admin/ajustes/envios`**:
+
+- **Precios** (una sección por producto): precio base, suplementos por talla y por color, escalones del estampado
+  por zona («hasta X cm²» → precio; la página muestra la superficie máxima de cada zona y comprueba que los escalones
+  vayan de menor a mayor), tope de unidades por diseño y la tabla global de descuentos por volumen. Una vista previa
+  enseña el «precio desde» de cada producto mientras se edita.
+- **Envíos**: tarifa, importe a partir del cual el envío es gratis, suplemento de Baleares, prefijos de código postal
+  a los que no se envía (lista de dos dígitos con el nombre de la provincia), y los textos que cita la web (zonas
+  excluidas, transportista, zonas de entrega).
+- **Plazos de producción**: días laborables mínimo y máximo.
+
+Cada sección se guarda completa (`POST /api/admin/settings/<sección>`), se valida con los mismos esquemas zod en el
+navegador y en el servidor (`src/lib/settings-schema.ts`) y tiene un botón «Restablecer valores por defecto»
+(`DELETE`) con confirmación, que vuelve a los valores en código. Lo guardado vive en la tabla `settings` de la base de
+datos (`src/lib/settings.ts`, caché de 30 s por instancia que se invalida al guardar).
+
+Toda la tienda lee **el catálogo efectivo** (`getCatalog()` en el servidor, `useCatalog()` en el navegador desde
+`src/components/catalog/CatalogProvider.tsx`, que proveen los layouts de la web y del estudio): editor (precio en
+vivo y tope de unidades), carrito, checkout (totales, envío, provincias disponibles y rechazo de códigos postales
+excluidos), fichas («desde», tablas de escalones y descuentos, preguntas), portada, cómo funciona, empresas,
+contacto, condiciones de venta, preguntas frecuentes, pie, datos estructurados e imágenes para compartir, emails de
+pedido y página del pedido. El servidor recalcula cada pedido con ese mismo catálogo (`src/lib/checkout.ts`), así que
+los pedidos ya creados conservan los importes con los que se pagaron. Sin nada guardado, los precios son
+exactamente los de `src/config/`.
 
 ## Puesta en marcha
 
@@ -145,8 +172,9 @@ src/
     admin/       panel de administración ((auth) = login, (panel) = protegido)
     api/         checkout, PayPal, subidas, archivos, presupuestos, contacto, admin
   components/    ui, mockups (ilustraciones SVG), editor, cart, checkout, admin, catalog, home, content, site
-  config/        site.ts (negocio) y products.ts (catálogo, zonas y tarifas)
+  config/        site.ts (negocio) y products.ts (catálogo, zonas y tarifas de serie)
   lib/           pricing, design, pedidos, base de datos, auth, emails, PayPal, límites de peticiones…
+                 settings-schema.ts / settings.ts: ajustes editables desde el panel y catálogo efectivo
   proxy.ts       protege /admin y /api/admin (en Next.js 16 sustituye a middleware.ts)
 scripts/         seed-demo.mjs (datos de ejemplo para el panel)
 ```

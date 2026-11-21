@@ -2,8 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Layers, ImagePlus, Receipt, Shirt, Smile, Type } from 'lucide-react'
 import { getColor, getProduct, getView, type ProductId } from '@/config/products'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { emptyDesign, type Design } from '@/lib/design'
 import { useCart } from '@/lib/cart-store'
+import { catalogProduct } from '@/lib/settings-schema'
 import { loadDraft, saveDraft } from '@/lib/editor/draft'
 import { ensureFont } from '@/lib/editor/fonts'
 import { useEditor, type EditorTab } from '@/lib/editor/store'
@@ -59,6 +61,13 @@ function useMediaQuery(query: string): boolean {
 function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: string) {
   const ready = useEditor((s) => s.ready && s.productId === productId)
   const started = useRef(false)
+  // Tope de unidades por diseño del catálogo efectivo (editable en el panel). Se lee por ref para que un
+  // refresco del catálogo no reinicie el editor.
+  const catalog = useCatalog()
+  const maxQtyRef = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    maxQtyRef.current = catalogProduct(catalog, productId)?.maxQtyPerLine
+  }, [catalog, productId])
 
   useEffect(() => {
     if (started.current) return
@@ -66,6 +75,7 @@ function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: st
     let cancelled = false
     const product = getProduct(productId)
     if (!product) return
+    const maxQtyPerLine = maxQtyRef.current
     const line = lineParam ? useCart.getState().lines.find((l) => l.id === lineParam && l.productId === productId) : undefined
 
     let design: Design
@@ -74,7 +84,7 @@ function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: st
       design = line.design
       sizes = line.sizes
     } else {
-      const draft = loadDraft(productId)
+      const draft = loadDraft(productId, maxQtyPerLine)
       design = draft?.design ?? emptyDesign(productId, product.colors[0].id)
       sizes = draft?.sizes ?? {}
       if (colorParam && getColor(product, colorParam)) design = { ...design, colorId: colorParam }
@@ -85,7 +95,7 @@ function useBootEditor(productId: ProductId, colorParam?: string, lineParam?: st
     Promise.all([...fonts].map((f) => ensureFont(f))).then(() => {
       if (cancelled) return
       const store = useEditor.getState()
-      store.init({ productId, design, sizes, editLineId: line?.id ?? null })
+      store.init({ productId, design, sizes, editLineId: line?.id ?? null, maxQtyPerLine })
       store.remeasureAll()
     })
     return () => {

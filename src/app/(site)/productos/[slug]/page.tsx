@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Check } from 'lucide-react'
-import { PRODUCTS, fromPriceCents, getProductBySlug, isSingleSize } from '@/config/products'
+import { PRODUCTS, fromPriceCents, isSingleSize } from '@/config/products'
 import { site } from '@/config/site'
 import { Breadcrumb } from '@/components/catalog/Breadcrumb'
 import { ColorPicker } from '@/components/catalog/ColorPicker'
@@ -21,6 +21,8 @@ import { JsonLd } from '@/components/site/JsonLd'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { formatEUR } from '@/lib/format'
 import { OG_SIZE, productImagePath } from '@/lib/og-meta'
+import { getCatalog } from '@/lib/settings'
+import { catalogProductBySlug } from '@/lib/settings-schema'
 
 type Params = { params: Promise<{ slug: string }> }
 
@@ -33,7 +35,8 @@ export const dynamicParams = false
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params
-  const product = getProductBySlug(slug)
+  // Precio "desde" efectivo (editable en el panel) también en la descripción para buscadores.
+  const product = catalogProductBySlug(await getCatalog(), slug)
   if (!product) return { title: 'Página no encontrada', robots: { index: false } }
   const title = `${seoTitle(product)} con impresión DTF`
   const description = truncate(`Desde ${formatEUR(fromPriceCents(product))} (IVA incluido). ${product.description}`, 158)
@@ -57,14 +60,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Params) {
   const { slug } = await params
-  const product = getProductBySlug(slug)
+  // Producto con los precios efectivos (editables en el panel); las vistas, zonas y textos son los del catálogo en código.
+  const catalog = await getCatalog()
+  const product = catalogProductBySlug(catalog, slug)
   if (!product) notFound()
 
   const fromCents = fromPriceCents(product)
   const cheapestPrint = fromCents - product.basePriceCents
   const title = seoTitle(product)
   const url = `${site.url}/productos/${product.slug}`
-  const faqs = productFaqs(product)
+  const faqs = productFaqs(product, catalog)
 
   return (
     <ProductSelectionProvider productId={product.id}>
@@ -143,7 +148,7 @@ export default async function ProductPage({ params }: Params) {
         <SectionHeading id="precio-titulo" eyebrow="Precio" title="Cómo se calcula el precio">
           Sin letra pequeña: pagas el producto, el estampado de cada zona y, si pides varias unidades, tienes descuento.
         </SectionHeading>
-        <ProductPricing product={product} />
+        <ProductPricing product={product} catalog={catalog} />
       </Section>
 
       <Section aria-labelledby="zonas-titulo" tone="pink">
@@ -160,7 +165,7 @@ export default async function ProductPage({ params }: Params) {
 
       <Section aria-labelledby="envio-titulo" tone="yellow">
         <SectionHeading id="envio-titulo" eyebrow="Plazos y envío" title="Cuándo lo recibes" />
-        <ShippingSummary />
+        <ShippingSummary catalog={catalog} />
       </Section>
 
       <Section aria-labelledby="faq-titulo" tone="white" className="border-y-2 border-ink">
@@ -192,7 +197,7 @@ export default async function ProductPage({ params }: Params) {
 
       <Section aria-labelledby="mas-titulo" tone="cream">
         <SectionHeading id="mas-titulo" eyebrow="Más ideas" title="Otros productos para personalizar" />
-        <RelatedProducts current={product} />
+        <RelatedProducts current={product} catalog={catalog} />
       </Section>
 
       <JsonLd

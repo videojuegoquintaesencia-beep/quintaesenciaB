@@ -22,6 +22,8 @@ interface EditorState {
   areaId: string
   selectedId: string | null
   sizes: Record<string, number>
+  /** Tope de unidades por diseño: el del catálogo efectivo (editable en el panel), que `init` recibe del editor. */
+  maxQtyPerLine: number
   /** Línea del carrito que se está editando. */
   editLineId: string | null
   past: Design[]
@@ -36,7 +38,7 @@ interface EditorState {
   /** Pide enfocar el campo de texto del panel Texto (doble toque en un texto o recién añadido). */
   focusText: boolean
 
-  init: (input: { productId: ProductId; design: Design; sizes: Record<string, number>; editLineId?: string | null }) => void
+  init: (input: { productId: ProductId; design: Design; sizes: Record<string, number>; editLineId?: string | null; maxQtyPerLine?: number }) => void
   announce: (message: string) => void
   setTab: (tab: EditorTab) => void
   requestTextFocus: () => void
@@ -147,6 +149,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     areaId: '',
     selectedId: null,
     sizes: {},
+    maxQtyPerLine: 1,
     editLineId: null,
     past: [],
     future: [],
@@ -157,7 +160,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     tab: 'producto',
     focusText: false,
 
-    init: ({ productId, design, sizes, editLineId = null }) => {
+    init: ({ productId, design, sizes, editLineId = null, maxQtyPerLine }) => {
       const product = productOf(productId)
       const view = product.views[0]
       set({
@@ -168,6 +171,7 @@ export const useEditor = create<EditorState>()((set, get) => {
         areaId: view.areas[0].id,
         selectedId: null,
         sizes: Object.keys(sizes).length ? sizes : defaultSizes(product),
+        maxQtyPerLine: maxQtyPerLine ?? product.maxQtyPerLine,
         editLineId,
         past: [],
         future: [],
@@ -360,9 +364,8 @@ export const useEditor = create<EditorState>()((set, get) => {
 
     setQty: (sizeId, qty) => {
       const s = get()
-      const product = productOf(s.productId)
       const others = Object.entries(s.sizes).reduce((n, [id, q]) => (id === sizeId ? n : n + q), 0)
-      const value = clamp(Math.floor(qty) || 0, 0, Math.max(0, product.maxQtyPerLine - others))
+      const value = clamp(Math.floor(qty) || 0, 0, Math.max(0, s.maxQtyPerLine - others))
       const sizes = { ...s.sizes, [sizeId]: value }
       if (value === 0) delete sizes[sizeId]
       set({ sizes })

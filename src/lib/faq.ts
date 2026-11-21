@@ -1,12 +1,13 @@
 /**
- * Preguntas frecuentes. Los importes, plazos y zonas salen de `config/`, así que las respuestas
- * no se desajustan si el negocio cambia sus tarifas.
+ * Preguntas frecuentes. Los importes, plazos y zonas salen del catálogo efectivo (precios, envíos y plazos que
+ * la dueña edita en el panel), así que las respuestas no se desajustan si el negocio cambia sus tarifas.
  *
  * Marcado mínimo dentro de las respuestas: `[texto](/ruta)` para enlaces internos y `**texto**` para negrita.
  */
 import { site } from '@/config/site'
-import { PRODUCTS, QUANTITY_DISCOUNTS, fromPriceCents } from '@/config/products'
+import { fromPriceCents } from '@/config/products'
 import { formatEUR } from './format'
+import type { Catalog } from './settings-schema'
 
 export interface FaqItem {
   id: string
@@ -22,20 +23,22 @@ export interface FaqGroup {
 }
 
 const eur = (cents: number) => formatEUR(cents, { compact: false })
-const { shipping, production, uploads, b2b } = site
-
-const shippingFlat = eur(shipping.flatCents)
-const shippingFree = formatEUR(shipping.freeFromCents, { compact: true })
-const balearesTotal = eur(shipping.flatCents + shipping.balearesExtraCents)
-const balearesExtra = eur(shipping.balearesExtraCents)
+const { uploads, b2b } = site
 const maxUploadMb = Math.round(uploads.maxArtworkBytes / 1024 / 1024)
-const firstDiscount = QUANTITY_DISCOUNTS.find((d) => d.pct > 0)
-const topDiscount = QUANTITY_DISCOUNTS[QUANTITY_DISCOUNTS.length - 1]
 const vatPct = Math.round(site.vatRate * 100)
 
-const productPrices = PRODUCTS.map((p) => `${p.namePlural.toLowerCase()} desde ${formatEUR(fromPriceCents(p))}`)
+/** Grupos de preguntas con los importes, plazos y zonas del catálogo efectivo. */
+export function faqGroups(catalog: Catalog): FaqGroup[] {
+  const { shipping, production, quantityDiscounts } = catalog
+  const shippingFlat = eur(shipping.flatCents)
+  const shippingFree = formatEUR(shipping.freeFromCents, { compact: true })
+  const balearesTotal = eur(shipping.flatCents + shipping.balearesExtraCents)
+  const balearesExtra = eur(shipping.balearesExtraCents)
+  const firstDiscount = quantityDiscounts.find((d) => d.pct > 0)
+  const topDiscount = quantityDiscounts[quantityDiscounts.length - 1]
+  const productPrices = catalog.products.map((p) => `${p.namePlural.toLowerCase()} desde ${formatEUR(fromPriceCents(p))}`)
 
-export const FAQ_GROUPS: FaqGroup[] = [
+  return [
   {
     id: 'pedidos',
     title: 'Pedidos y plazos',
@@ -167,7 +170,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
         id: 'cuidados',
         question: '¿Cómo lavo y cuido mi prenda personalizada?',
         answer: [
-          ...PRODUCTS.map((p) => `**${p.namePlural}:** ${p.care.join(' ')}`),
+          ...catalog.products.map((p) => `**${p.namePlural}:** ${p.care.join(' ')}`),
           'Con estos cuidados el estampado aguanta mejor el uso diario. Los repetimos en la guía de [cómo funciona](/como-funciona#cuidados).',
         ],
       },
@@ -297,7 +300,8 @@ export const FAQ_GROUPS: FaqGroup[] = [
       },
     ],
   },
-]
+  ]
+}
 
 /** Quita el marcado ([texto](/ruta) y **negrita**) para usar la respuesta como texto plano (JSON-LD, emails). */
 export function faqPlainText(answer: string[]): string {

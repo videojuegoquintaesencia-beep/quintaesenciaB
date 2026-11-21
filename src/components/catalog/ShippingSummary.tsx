@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { CreditCard, Factory, ShieldCheck, Truck } from 'lucide-react'
-import { site } from '@/config/site'
 import { formatEUR } from '@/lib/format'
+import type { Catalog } from '@/lib/settings-schema'
 
-/** Plazos y envío, siempre con los datos de `site`. */
-export function ShippingSummary() {
-  const { production, shipping } = site
+/** Plazos y envío, siempre con los valores efectivos del catálogo (editables en el panel). */
+export function ShippingSummary({ catalog }: { catalog: Catalog }) {
+  const { production, shipping } = catalog
   const items = [
     {
       icon: Factory,

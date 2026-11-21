@@ -1,6 +1,6 @@
 'use client'
 import { Check } from 'lucide-react'
-import { getProduct } from '@/config/products'
+import { useCatalogProduct } from '@/components/catalog/CatalogProvider'
 import { cn } from '@/lib/cn'
 import { formatEUR, formatNumber } from '@/lib/format'
 import { useEditor } from '@/lib/editor/store'
@@ -11,7 +11,8 @@ export function ProductPanel() {
   const design = useEditor((s) => s.design)
   const viewId = useEditor((s) => s.viewId)
   const areaId = useEditor((s) => s.areaId)
-  const product = getProduct(productId)
+  // Producto con los suplementos de color efectivos (editables en el panel).
+  const product = useCatalogProduct(productId)
   if (!product) return null
 
   const selected = product.colors.find((c) => c.id === design.colorId) ?? product.colors[0]

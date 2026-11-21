@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { PRODUCTS } from '@/config/products'
 import { ProductCard } from '@/components/catalog/ProductCard'
 import { Section, SectionHeading } from '@/components/ui/Section'
+import type { Catalog } from '@/lib/settings-schema'
 
-export function ProductsSection() {
+/** Tarjetas de la portada con el precio "desde" efectivo. */
+export function ProductsSection({ catalog }: { catalog: Catalog }) {
   return (
     <Section aria-labelledby="productos-titulo" tone="white" className="border-b-2 border-ink">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -17,7 +18,7 @@ export function ProductsSection() {
         </Link>
       </div>
       <ul className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
-        {PRODUCTS.map((product) => (
+        {catalog.products.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />
           </li>

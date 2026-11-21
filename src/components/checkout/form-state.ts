@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import type { CartLine } from '@/lib/cart-store'
+import type { DeliveryRules } from '@/lib/es-provinces'
 import { isPostalCodeDeliverable, isValidSpanishPostalCode, normalizePostalCode } from '@/lib/pricing'
-import { COMPANY_REQUIRED_MESSAGE, TAX_ID_REQUIRED_MESSAGE, addressSchema, customerSchema, fieldErrors } from '@/lib/validators'
+import { COMPANY_REQUIRED_MESSAGE, TAX_ID_REQUIRED_MESSAGE, addressSchemaFor, customerSchema, fieldErrors } from '@/lib/validators'
 
 export interface FormValues {
   name: string
@@ -60,10 +61,10 @@ const noteSchema = z.string().max(500, 'Máximo 500 caracteres')
 /** Claves de error de los campos de la dirección: "ship.<campo>" para no chocar con los de contacto. */
 const SHIP = 'ship.'
 
-/** Código postal con formato correcto pero fuera de la zona de envío de la tienda. */
-export function isUndeliverablePostalCode(value: string): boolean {
+/** Código postal con formato correcto pero fuera de la zona de envío de la tienda (reglas efectivas del panel). */
+export function isUndeliverablePostalCode(value: string, rules: DeliveryRules): boolean {
   const cp = normalizePostalCode(value)
-  return isValidSpanishPostalCode(cp) && !isPostalCodeDeliverable(cp)
+  return isValidSpanishPostalCode(cp) && !isPostalCodeDeliverable(cp, rules)
 }
 
 /** El esquema compartido usa etiquetas cortas como mensaje; aquí se convierten en frases claras. */
@@ -76,15 +77,16 @@ const FRIENDLY: Record<string, string> = {
 }
 const TERSE = new Set(['Nombre y apellidos', 'Dirección', 'Localidad', 'Provincia'])
 
-export function validateForm(v: FormValues): FormErrors {
-  const errors = validateRaw(v)
+/** Valida el formulario con las mismas reglas que el servidor (`rules`: zonas de envío efectivas del catálogo). */
+export function validateForm(v: FormValues, rules: DeliveryRules): FormErrors {
+  const errors = validateRaw(v, rules)
   for (const [key, msg] of Object.entries(errors)) if (TERSE.has(msg) && FRIENDLY[key]) errors[key] = FRIENDLY[key]
   if (errors['ship.postalCode'] === 'Código postal no válido' && !v.postalCode.trim())
     errors['ship.postalCode'] = 'Introduce tu código postal de 5 dígitos.'
   return errors
 }
 
-function validateRaw(v: FormValues): FormErrors {
+function validateRaw(v: FormValues, rules: DeliveryRules): FormErrors {
   const errors: FormErrors = {}
 
   const customer = customerSchema.safeParse(contactOf(v))
@@ -95,7 +97,7 @@ function validateRaw(v: FormValues): FormErrors {
     if (!v.taxId.trim()) errors.taxId = TAX_ID_REQUIRED_MESSAGE
   }
 
-  const address = addressSchema.safeParse(addressOf(v))
+  const address = addressSchemaFor(rules).safeParse(addressOf(v))
   if (!address.success) {
     for (const [key, msg] of Object.entries(fieldErrors(address.error))) errors[SHIP + key] = msg
   }

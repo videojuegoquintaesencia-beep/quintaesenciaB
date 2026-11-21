@@ -6,10 +6,10 @@
 import 'server-only'
 import { z } from 'zod'
 import { site } from '@/config/site'
-import { getArea, getProduct, getView, type Product } from '@/config/products'
+import { getArea, getView, type Product } from '@/config/products'
 import { areaUsage, parseDesign, printedAreaIds, designArtworkFileIds, type Design } from './design'
 import { getDb } from './db'
-import { provinceFromPostalCode } from './es-provinces'
+import { provinceFromPostalCode, type DeliveryRules } from './es-provinces'
 import { sendOrderAdminAlert, sendOrderConfirmation } from './emails/order'
 import { getFileMetas, getPngSizes, type FileKind } from './files'
 import { readBodyJson } from './http-body'
@@ -17,7 +17,9 @@ import { isValidId, newId } from './ids'
 import { addOrderEvent, type NewOrderInput, type Order, type OrderItem, type PaymentProvider } from './orders'
 import { computeCartTotals, priceLine, type LinePrice } from './pricing'
 import { printFileMatchesBox } from './print-file'
-import { addressSchema, customerSchema, fieldErrors } from './validators'
+import { getCatalog } from './settings'
+import { catalogProduct } from './settings-schema'
+import { addressSchemaFor, customerSchema, fieldErrors } from './validators'
 
 export const MAX_CART_LINES = 20
 
@@ -43,13 +45,15 @@ const consentsSchema = z.object({
   artworkRights: z.literal(true, { error: 'Debes confirmar que tienes derecho a usar los diseños' }),
 })
 
-const checkoutSchema = z.object({
-  lines: z.array(z.unknown()).min(1, 'Tu carrito está vacío').max(MAX_CART_LINES, `Máximo ${MAX_CART_LINES} líneas por pedido`),
-  customer: customerSchema,
-  shipping: addressSchema,
-  note: z.string().trim().max(500, 'Máximo 500 caracteres').optional(),
-  consents: consentsSchema,
-})
+/** La dirección se valida con las zonas de envío efectivas (editables en el panel), así que el esquema se construye por petición. */
+const checkoutSchemaFor = (rules: DeliveryRules) =>
+  z.object({
+    lines: z.array(z.unknown()).min(1, 'Tu carrito está vacío').max(MAX_CART_LINES, `Máximo ${MAX_CART_LINES} líneas por pedido`),
+    customer: customerSchema,
+    shipping: addressSchemaFor(rules),
+    note: z.string().trim().max(500, 'Máximo 500 caracteres').optional(),
+    consents: consentsSchema,
+  })
 
 export type PrepareResult =
   | { ok: true; input: NewOrderInput }
@@ -117,7 +121,9 @@ function printBoxes(product: Product, design: Design, printedAreas: string[], pr
 
 /** Valida la petición de pago y construye el pedido con importes recalculados en el servidor. */
 export async function prepareOrder(raw: unknown, provider: PaymentProvider): Promise<PrepareResult> {
-  const parsed = checkoutSchema.safeParse(raw)
+  // Precios, descuentos y reglas de envío efectivos: el panel puede haberlos cambiado respecto a los de código.
+  const catalog = await getCatalog()
+  const parsed = checkoutSchemaFor(catalog.shipping).safeParse(raw)
   if (!parsed.success) {
     const errors = fieldErrors(parsed.error)
     const first = parsed.error.issues[0]
@@ -147,7 +153,7 @@ export async function prepareOrder(raw: unknown, provider: PaymentProvider): Pro
     const lineId = line.id && isValidId(line.id) && !seenLineIds.has(line.id) ? line.id : newId(12)
     seenLineIds.add(lineId)
 
-    const product = getProduct(line.productId)
+    const product = catalogProduct(catalog, line.productId)
     if (!product) return fail(422, 'line_invalid', 'Un producto del carrito ya no está disponible.', { lineIds: [lineId] })
 
     const color = product.colors.find((c) => c.id === line.colorId)
@@ -158,7 +164,7 @@ export async function prepareOrder(raw: unknown, provider: PaymentProvider): Pro
     const design = checked.design
 
     const sizes = Object.fromEntries(Object.entries(line.sizes).filter(([, q]) => q > 0))
-    const price = priceLine({ productId: product.id, colorId: line.colorId, sizes, design })
+    const price = priceLine({ productId: product.id, colorId: line.colorId, sizes, design }, catalog)
     if (!price.ok) return fail(422, 'line_invalid', `${label}: ${price.error}`, { lineIds: [lineId] })
 
     const printed = printedAreaIds(design)
@@ -232,6 +238,7 @@ export async function prepareOrder(raw: unknown, provider: PaymentProvider): Pro
   const totals = computeCartTotals(
     prices.map((p) => p.totalCents),
     shipping.postalCode,
+    catalog.shipping,
   )
   if (totals.shippingCents === null)
     return fail(422, 'zone', 'No enviamos a ese código postal desde la tienda online.', {

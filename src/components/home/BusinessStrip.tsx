@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { ArrowRight, FileText } from 'lucide-react'
-import { QUANTITY_DISCOUNTS } from '@/config/products'
 import { site } from '@/config/site'
 import { Section } from '@/components/ui/Section'
+import type { Catalog } from '@/lib/settings-schema'
 
 const AUDIENCES = ['Equipos', 'Empresas', 'Eventos']
 
-export function BusinessStrip() {
-  const discounts = QUANTITY_DISCOUNTS.filter((d) => d.pct > 0)
+export function BusinessStrip({ catalog }: { catalog: Catalog }) {
+  const discounts = catalog.quantityDiscounts.filter((d) => d.pct > 0)
   return (
     <Section aria-labelledby="empresas-titulo" tone="ink" className="border-b-2 border-ink">
       <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">

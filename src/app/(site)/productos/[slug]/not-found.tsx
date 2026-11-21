@@ -1,8 +1,10 @@
 import Link from 'next/link'
-import { PRODUCTS } from '@/config/products'
 import { ProductCard } from '@/components/catalog/ProductCard'
+import { getCatalog } from '@/lib/settings'
 
-export default function ProductNotFound() {
+export default async function ProductNotFound() {
+  // Las tarjetas enseñan el precio "desde" efectivo (editable en el panel).
+  const { products } = await getCatalog()
   return (
     <div className="container-pop py-14 sm:py-20">
       <div className="max-w-2xl">
@@ -18,7 +20,7 @@ export default function ProductNotFound() {
       </div>
       <h2 className="mt-14 text-2xl sm:text-3xl">Lo que sí puedes personalizar</h2>
       <ul className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
-        {PRODUCTS.map((product) => (
+        {products.map((product) => (
           <li key={product.id}>
             <ProductCard product={product} />
           </li>
