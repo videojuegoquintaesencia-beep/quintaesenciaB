@@ -65,7 +65,7 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
         <p className="sticker mb-4 inline-flex items-center gap-2 text-sm">Propuesta de presupuesto</p>
         <h1 className="text-4xl sm:text-5xl">Tu presupuesto {quote.number}</h1>
         <p className="mt-3 text-lg text-ink-soft">
-          Hola {firstName(quote.name)}, esta es nuestra propuesta para tu solicitud{quote.company ? ` para ${quote.company}` : ''}. Revísala
+          Hola {firstName(quote.name)}, esta es nuestra propuesta para tu solicitud{quote.company ? ` de ${quote.company}` : ''}. Revísala
           y, si te encaja, acéptala y págala aquí mismo: en cuanto recibamos el pago nos ponemos con tu pedido.
         </p>
         {proposal.message && (

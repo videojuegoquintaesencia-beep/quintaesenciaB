@@ -29,7 +29,9 @@ Desde ahí cierra el ciclo sin salir de la web:
    (0 si va incluido), la validez en días (15 por defecto) y un mensaje para el cliente. «Guardar borrador» no avisa a
    nadie; «Enviar al cliente» fija la fecha límite, genera el enlace público y manda el email
    (`src/lib/emails/quote.ts`, `sendQuoteProposal`). Mientras el cliente no acepte, se puede editar y «Reenviar»
-   (renueva la validez; el enlace no cambia). El estado del presupuesto pasa a «Presupuesto enviado».
+   (renueva la validez; el enlace no cambia; si solo se guardan los cambios, el enlace ya muestra la versión nueva sin
+   avisar por email). La validez termina al final del último día en hora peninsular. El estado del presupuesto pasa a
+   «Presupuesto enviado».
 2. **Aceptación.** El cliente abre `/presupuesto/[id]?t=<token>` (sin indexar, sin `Referer`, 404 con token malo),
    ve las líneas, los totales con el IVA incluido y la validez, y rellena los mismos datos y consentimientos que el
    checkout (se reutilizan `CheckoutForm`, `form-state.ts` y `PaymentSection`). Si la propuesta caducó, no hay botón

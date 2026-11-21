@@ -19,6 +19,7 @@ import {
   getOrderById,
   markPaymentFailed,
   setPayPalOrderId,
+  updateOrderStatus,
   type Order,
   type OrderItem,
   type PaymentProvider,
@@ -188,11 +189,16 @@ export async function acceptProposal(
     quoteId: quote.id,
   })
 
-  const accepted: Proposal = { ...proposal, acceptedAt: proposal.acceptedAt ?? new Date().toISOString() }
+  // Siempre la fecha de ESTA aceptación: si un pedido anterior se canceló, la propuesta guardada aún tenía la vieja.
+  const accepted: Proposal = { ...proposal, acceptedAt: new Date().toISOString() }
   const linked = await linkQuoteOrder(quote.id, order.id, accepted, quote.orderId)
   if (!linked) {
-    // Dos aceptaciones a la vez: gana la primera y se devuelve su pedido. El que sobra queda sin pagar y la
-    // limpieza periódica lo elimina.
+    // Dos aceptaciones a la vez: gana la primera y se devuelve su pedido. El que sobra se cancela para que no quede
+    // como un pedido pendiente de pago cobrable.
+    await updateOrderStatus(order.id, 'cancelled', {
+      note: 'Aceptación duplicada de la propuesta: el pedido vigente es otro',
+      actor: 'system',
+    })
     const fresh = await getQuote(quote.id)
     const winner = fresh ? await loadQuoteOrder(fresh) : null
     if (winner && isLiveQuoteOrder(winner)) return resumeAcceptedOrder(winner, mode)

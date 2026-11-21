@@ -129,6 +129,8 @@ export function ProposalAcceptClient({
           setServerErrors(mapServerErrors(res.failure.fieldErrors))
           focusFirstError()
         }
+        // Pagada desde otra pestaña o dispositivo: al refrescar, la página pasa a enseñar el pedido ya aceptado.
+        if (res.failure.code === 'already_paid') router.refresh()
         throw new CheckoutError(res.failure)
       },
       onPaid: (redirect) => router.push(redirect),

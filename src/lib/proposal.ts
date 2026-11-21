@@ -157,9 +157,12 @@ function madridOffsetMinutes(at: Date): number {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    // Con segundos: sin ellos, a las 23:59:59 el desfase salía con un minuto de menos y la validez terminaba a las
+    // 00:00:59 del día siguiente, así que la fecha que veía el cliente era un día posterior a la real.
+    second: '2-digit',
   }).formatToParts(at)
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
-  const local = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'))
+  const local = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
   return Math.round((local - at.getTime()) / 60_000)
 }
 

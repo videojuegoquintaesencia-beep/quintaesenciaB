@@ -244,8 +244,15 @@ export function ProposalEditor({
     setSaved(proposal)
     setLines(proposal.lines.map(draftFromLine))
     if (result.data.publicUrl) setPublicUrl(result.data.publicUrl)
-    if (action === 'save') setNotice({ kind: 'success', text: 'Borrador guardado. El cliente no recibe nada hasta que la envíes.' })
-    else if (result.data.email === 'failed') {
+    if (action === 'save') {
+      // Si la propuesta ya se envió, el enlace del cliente muestra siempre la última versión guardada: hay que decirlo.
+      setNotice({
+        kind: 'success',
+        text: sent
+          ? 'Cambios guardados. El enlace del cliente ya muestra esta versión; reenvíala si quieres avisarle por email.'
+          : 'Borrador guardado. El cliente no recibe nada hasta que la envíes.',
+      })
+    } else if (result.data.email === 'failed') {
       setNotice({
         kind: 'warning',
         text: `La propuesta está enviada y el enlace funciona, pero el email no ha salido${result.data.emailError ? ` (${result.data.emailError})` : ''}. Copia el enlace y házselo llegar al cliente.`,
@@ -311,8 +318,9 @@ export function ProposalEditor({
         ref={formRef}
         noValidate
         onSubmit={(e) => {
+          // Intro en cualquier campo solo guarda: enviar (o reenviar) el email al cliente exige pulsar su botón.
           e.preventDefault()
-          void submit(sent ? 'send' : 'save')
+          void submit('save')
         }}
         className="space-y-5"
       >
