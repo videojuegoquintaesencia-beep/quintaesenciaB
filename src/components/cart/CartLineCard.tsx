@@ -3,7 +3,7 @@ import { Pencil, Trash, TriangleExclamationPoint } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useCart } from '@/lib/cart-store'
-import { formatEUR, unidades } from '@/lib/format'
+import { formatEUR, formatNumber, unidades } from '@/lib/format'
 import { LineThumb } from './LineThumb'
 import { SizeSteppers } from './SizeSteppers'
 import { editHref, lineTitle, primaryPreviewId } from './line-utils'
@@ -33,7 +33,7 @@ function Breakdown({ priced }: { priced: PricedLine }) {
       ))}
       {price.sizeSurchargeCents > 0 && <Row label="Suplemento de talla" value={formatEUR(price.sizeSurchargeCents)} />}
       {price.discountCents > 0 && (
-        <Row label={`Descuento por cantidad (${price.discountPct}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
+        <Row label={`Descuento por cantidad (${formatNumber(price.discountPct)}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
       )}
       <Row label={`Total de la línea · ${unidades(price.quantity)}`} value={formatEUR(price.totalCents)} strong />
     </dl>

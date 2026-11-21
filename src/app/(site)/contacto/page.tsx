@@ -9,7 +9,7 @@ import { PageHero } from '@/components/content/PageHero'
 import { pageMetadata } from '@/components/content/metadata'
 import { socialHandle, socialHref, telHref, whatsappHref } from '@/components/content/contact-info'
 import { site } from '@/config/site'
-import { getSettings } from '@/lib/settings'
+import { getCatalog, getSettings } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Contacto',
@@ -34,9 +34,8 @@ function ContactRow({ icon: Icon, label, children }: { icon: LucideIcon; label: 
 const linkClass = 'underline-offset-4 hover:underline'
 
 export default async function ContactoPage() {
-  // Datos de contacto efectivos (editables en el panel): los campos vacíos no se muestran.
-  const { contact } = await getSettings()
-  const { shipping } = site
+  // Datos de contacto y zonas sin envío efectivos (editables en el panel): los campos vacíos no se muestran.
+  const [{ contact }, { shipping }] = await Promise.all([getSettings(), getCatalog()])
   const whatsapp = whatsappHref(contact.whatsapp)
   const hasOtherWays = Object.values(contact).some((v) => v !== '')
   return (

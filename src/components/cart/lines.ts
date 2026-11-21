@@ -1,11 +1,14 @@
 'use client'
 import { useMemo } from 'react'
-import { getColor, getProduct, type Product, type ProductColor } from '@/config/products'
+import { getColor, type Product, type ProductColor } from '@/config/products'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import type { CartLine } from '@/lib/cart-store'
 import { priceLine, totalQuantity, type LinePrice } from '@/lib/pricing'
+import { catalogProduct } from '@/lib/settings-schema'
 
 export interface PricedLine {
   line: CartLine
+  /** Producto con los precios efectivos (editables en el panel). */
   product: Product | undefined
   color: ProductColor | undefined
   /** null si la línea no se puede calcular (ver `error`). */
@@ -14,14 +17,15 @@ export interface PricedLine {
   units: number
 }
 
-/** Calcula el precio de cada línea con la misma función que usa el servidor. */
+/** Calcula el precio de cada línea con la misma función y el mismo catálogo efectivo que usa el servidor. */
 export function usePricedLines(lines: CartLine[]): PricedLine[] {
+  const catalog = useCatalog()
   return useMemo(
     () =>
       lines.map((line) => {
-        const product = getProduct(line.productId)
+        const product = catalogProduct(catalog, line.productId)
         const color = product ? getColor(product, line.colorId) : undefined
-        const result = priceLine({ productId: line.productId, colorId: line.colorId, sizes: line.sizes, design: line.design })
+        const result = priceLine({ productId: line.productId, colorId: line.colorId, sizes: line.sizes, design: line.design }, catalog)
         return {
           line,
           product,
@@ -31,6 +35,6 @@ export function usePricedLines(lines: CartLine[]): PricedLine[] {
           units: totalQuantity(line.sizes),
         }
       }),
-    [lines],
+    [lines, catalog],
   )
 }

@@ -11,7 +11,7 @@ import { WhyDtf } from '@/components/home/WhyDtf'
 import { contactLinks } from '@/components/site/contact-links'
 import { JsonLd } from '@/components/site/JsonLd'
 import { OG_IMAGES } from '@/lib/og-meta'
-import { getSettings } from '@/lib/settings'
+import { getCatalog, getSettings } from '@/lib/settings'
 import type { ContactSettings } from '@/lib/settings-schema'
 
 const title = `${site.name}: camisetas, sudaderas, gorras y tazas personalizadas`
@@ -64,16 +64,17 @@ function structuredData(contact: ContactSettings) {
 }
 
 export default async function HomePage() {
-  const { contact } = await getSettings()
+  // Contacto, precios "desde", descuentos, plazos y envío efectivos (editables en el panel).
+  const [{ contact }, catalog] = await Promise.all([getSettings(), getCatalog()])
   const { organization, website } = structuredData(contact)
   return (
     <>
-      <Hero />
-      <ProductsSection />
-      <HowItWorks />
+      <Hero catalog={catalog} />
+      <ProductsSection catalog={catalog} />
+      <HowItWorks catalog={catalog} />
       <WhyDtf />
-      <PersonalizerTeaser />
-      <BusinessStrip />
+      <PersonalizerTeaser catalog={catalog} />
+      <BusinessStrip catalog={catalog} />
       <Inspiration />
       <FinalCta />
       <JsonLd data={organization} />

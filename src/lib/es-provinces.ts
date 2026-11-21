@@ -1,9 +1,18 @@
 /**
  * Provincias españolas por los dos primeros dígitos del código postal.
- * Sirve para autocompletar la provincia en el checkout.
+ * Sirve para autocompletar la provincia en el checkout y para comprobar que la dirección es coherente con las
+ * zonas a las que se envía (prefijos excluidos que la dueña edita en el panel: `catalog.shipping`).
  */
-import { site } from '@/config/site'
 import { isValidSpanishPostalCode, normalizePostalCode } from './pricing'
+import type { ShippingSettings } from './settings-schema'
+
+/** Lo que necesita este módulo de los ajustes de envío efectivos. */
+export type DeliveryRules = Pick<ShippingSettings, 'excludedPostalPrefixes' | 'excludedZonesLabel'>
+
+/** Mensaje único para cualquier dirección fuera de la zona de envío (código postal, provincia o localidad). */
+export function undeliverableMessage(rules: Pick<ShippingSettings, 'excludedZonesLabel'>): string {
+  return `Aún no enviamos a ${rules.excludedZonesLabel} desde la tienda. Escríbenos y lo vemos.`
+}
 
 const PROVINCE_BY_PREFIX: Record<string, string> = {
   '01': 'Álava',
@@ -60,8 +69,6 @@ const PROVINCE_BY_PREFIX: Record<string, string> = {
   '52': 'Melilla',
 }
 
-const excluded = site.shipping.excludedPostalPrefixes as readonly string[]
-
 /** Provincia que corresponde a un código postal completo (5 dígitos) o a su prefijo; null si no existe. */
 export function provinceFromPostalCode(postalCode: string): string | null {
   const cp = normalizePostalCode(postalCode)
@@ -70,11 +77,13 @@ export function provinceFromPostalCode(postalCode: string): string | null {
   return PROVINCE_BY_PREFIX[cp.slice(0, 2)] ?? null
 }
 
-/** Provincias a las que enviamos desde la tienda online, ordenadas alfabéticamente. */
-export const DELIVERABLE_PROVINCES: string[] = Object.entries(PROVINCE_BY_PREFIX)
-  .filter(([prefix]) => !excluded.includes(prefix))
-  .map(([, name]) => name)
-  .sort((a, b) => a.localeCompare(b, 'es'))
+/** Provincias a las que enviamos desde la tienda online (según los prefijos excluidos), ordenadas alfabéticamente. */
+export function deliverableProvinces(excludedPrefixes: readonly string[]): string[] {
+  return Object.entries(PROVINCE_BY_PREFIX)
+    .filter(([prefix]) => !excludedPrefixes.includes(prefix))
+    .map(([, name]) => name)
+    .sort((a, b) => a.localeCompare(b, 'es'))
+}
 
 /* ───────────── Coherencia entre código postal, provincia y localidad ───────────── */
 
@@ -120,9 +129,26 @@ for (const [prefix, names] of Object.entries(PROVINCE_ALIASES)) for (const name 
 addName('canarias', '35')
 addName('canarias', '38')
 
-/** Palabras que identifican las zonas a las que no enviamos. En la provincia son más amplias que en la localidad. */
-const EXCLUDED_IN_PROVINCE = ['canarias', 'las palmas', 'gran canaria', 'tenerife', 'lanzarote', 'fuerteventura', 'la gomera', 'la palma', 'el hierro', 'ceuta', 'melilla']
-const EXCLUDED_IN_CITY = ['canarias', 'las palmas de gran canaria', 'gran canaria', 'tenerife', 'lanzarote', 'fuerteventura', 'la gomera', 'ceuta', 'melilla']
+/**
+ * Nombres con los que la gente escribe las zonas que pueden quedar fuera del envío, con los prefijos de código
+ * postal a los que pertenecen. Solo cuentan cuando TODOS sus prefijos están excluidos en los ajustes de envío: si
+ * la dueña empieza a enviar a Canarias, «Tenerife» deja de rechazarse. Los nombres que también son localidades de
+ * la península (La Palma, El Hierro, Las Palmas a secas) solo se miran en el campo de provincia.
+ */
+const ZONE_PHRASES: { phrase: string; prefixes: string[]; inCity: boolean }[] = [
+  { phrase: 'canarias', prefixes: ['35', '38'], inCity: true },
+  { phrase: 'las palmas', prefixes: ['35'], inCity: false },
+  { phrase: 'las palmas de gran canaria', prefixes: ['35'], inCity: true },
+  { phrase: 'gran canaria', prefixes: ['35'], inCity: true },
+  { phrase: 'lanzarote', prefixes: ['35'], inCity: true },
+  { phrase: 'fuerteventura', prefixes: ['35'], inCity: true },
+  { phrase: 'tenerife', prefixes: ['38'], inCity: true },
+  { phrase: 'la gomera', prefixes: ['38'], inCity: true },
+  { phrase: 'la palma', prefixes: ['38'], inCity: false },
+  { phrase: 'el hierro', prefixes: ['38'], inCity: false },
+  { phrase: 'ceuta', prefixes: ['51'], inCity: true },
+  { phrase: 'melilla', prefixes: ['52'], inCity: true },
+]
 
 const containsPhrase = (text: string, phrase: string) => ` ${text} `.includes(` ${phrase} `)
 
@@ -133,17 +159,18 @@ export interface AddressZoneIssue {
 
 /**
  * El servidor solo valida el código postal para decidir el envío; sin este cruce se podía poner un CP peninsular
- * con provincia o localidad de Canarias/Ceuta/Melilla (zonas sin envío), de otra provincia o inventada. La provincia
- * debe ser una provincia real (en castellano, cooficial o alias habitual) y corresponder al código postal.
- * Devuelve el primer problema encontrado o null si todo cuadra.
+ * con provincia o localidad de una zona sin envío (Canarias, Ceuta o Melilla por defecto), de otra provincia o
+ * inventada. La provincia debe ser una provincia real (en castellano, cooficial o alias habitual) y corresponder al
+ * código postal. Devuelve el primer problema encontrado o null si todo cuadra.
  */
-export function addressZoneIssue(address: { postalCode: string; province: string; city: string }): AddressZoneIssue | null {
+export function addressZoneIssue(address: { postalCode: string; province: string; city: string }, rules: DeliveryRules): AddressZoneIssue | null {
   const prefix = normalizePostalCode(address.postalCode).slice(0, 2)
   const province = normalizeName(address.province)
   const city = normalizeName(address.city)
-  const excluded = `Aún no enviamos a ${site.shipping.excludedZonesLabel} desde la tienda. Escríbenos y lo vemos.`
-  if (EXCLUDED_IN_PROVINCE.some((p) => containsPhrase(province, p))) return { field: 'province', message: excluded }
-  if (EXCLUDED_IN_CITY.some((p) => containsPhrase(city, p))) return { field: 'city', message: excluded }
+  const excluded = undeliverableMessage(rules)
+  const active = ZONE_PHRASES.filter((z) => z.prefixes.every((p) => rules.excludedPostalPrefixes.includes(p)))
+  if (active.some((z) => containsPhrase(province, z.phrase))) return { field: 'province', message: excluded }
+  if (active.some((z) => z.inCity && containsPhrase(city, z.phrase))) return { field: 'city', message: excluded }
   const known = PREFIXES_BY_NAME.get(province)
   if (!known) return { field: 'province', message: 'Elige una provincia de la lista.' }
   if (!known.includes(prefix)) return { field: 'province', message: 'La provincia no coincide con el código postal.' }

@@ -26,7 +26,8 @@ import { StepList, type Step } from '@/components/content/StepList'
 import { pageMetadata } from '@/components/content/metadata'
 import { telHref, whatsappHref } from '@/components/content/contact-info'
 import { site } from '@/config/site'
-import { getSettings } from '@/lib/settings'
+import { getCatalog, getSettings } from '@/lib/settings'
+import type { ProductionSettings } from '@/lib/settings-schema'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Ropa, gorras y tazas personalizadas para empresas',
@@ -35,7 +36,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/empresas',
 })
 
-const { b2b, production } = site
+const { b2b } = site
 
 const USES: Feature[] = [
   { icon: Users, title: 'Equipos y clubes', text: 'Camisetas y sudaderas para todo el equipo, con el mismo diseño y cada uno su talla.' },
@@ -54,7 +55,8 @@ const BENEFITS: Feature[] = [
   { icon: Package, title: 'Sin mínimo', text: 'Puedes empezar con pocas unidades y repetir el pedido cuando lo necesites.' },
 ]
 
-const STEPS: Step[] = [
+/** Pasos del trabajo con empresas; el plazo habitual es el efectivo (editable en el panel). */
+const steps = (production: ProductionSettings): Step[] => [
   { title: 'Nos cuentas', text: 'Productos, unidades aproximadas, fecha y, si lo tienes, tu logo. Con el formulario de abajo es cuestión de minutos.' },
   { title: 'Te respondemos', text: 'En 1-2 días laborables te escribimos con una propuesta o con las dudas que necesitemos resolver.' },
   { title: 'Afinamos el diseño', text: 'Revisamos tus archivos, ajustamos tamaños y colocación y cerramos los detalles contigo.' },
@@ -62,8 +64,8 @@ const STEPS: Step[] = [
 ]
 
 export default async function EmpresasPage() {
-  // Datos de contacto efectivos (editables en el panel).
-  const { contact } = await getSettings()
+  // Datos de contacto y catálogo efectivos (editables en el panel).
+  const [{ contact }, catalog] = await Promise.all([getSettings(), getCatalog()])
   const whatsapp = whatsappHref(contact.whatsapp, 'Hola, quería información para un pedido de empresa o equipo.')
   const canTalk = !!(contact.email || contact.phone || whatsapp)
   return (
@@ -117,13 +119,13 @@ export default async function EmpresasPage() {
               <li>Todos los precios incluyen el {Math.round(site.vatRate * 100)}&nbsp;% de IVA.</li>
             </ul>
           </div>
-          <DiscountTable />
+          <DiscountTable discounts={catalog.quantityDiscounts} />
         </div>
       </Section>
 
       <Section aria-labelledby="como-trabajamos">
         <SectionHeading id="como-trabajamos" eyebrow="Cómo trabajamos" title="Del primer mensaje a la entrega" />
-        <StepList steps={STEPS} label="Cómo trabajamos con empresas" />
+        <StepList steps={steps(catalog.production)} label="Cómo trabajamos con empresas" />
       </Section>
 
       <Section tone="pink" id="presupuesto" aria-labelledby="presupuesto-titulo">

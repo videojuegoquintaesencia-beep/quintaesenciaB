@@ -13,10 +13,14 @@ import {
   isValidEmail,
   optionalPhoneSchema,
   phoneSchema,
-  postalCodeSchema,
+  postalCodeSchemaFor,
   quoteRequestSchema,
   taxIdSchema,
 } from '@/lib/validators'
+import { DEFAULT_CATALOG } from '@/lib/settings-schema'
+
+/** Esquema de código postal con las reglas de envío en código (las mismas que `addressSchema`). */
+const postalCodeSchema = postalCodeSchemaFor(DEFAULT_CATALOG.shipping)
 
 /** Mensaje de la primera incidencia de un parseo que debe fallar. */
 function firstError(schema: z.ZodType, value: unknown): string {

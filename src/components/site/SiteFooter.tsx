@@ -1,60 +1,69 @@
 import Link from 'next/link'
 import { Clock, Lock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react'
-import { PRODUCTS, QUANTITY_DISCOUNTS } from '@/config/products'
+import { PRODUCTS, type QuantityDiscount } from '@/config/products'
 import { site } from '@/config/site'
 import { formatEUR } from '@/lib/format'
-import type { ContactSettings } from '@/lib/settings-schema'
+import { DEFAULT_CATALOG, type Catalog, type ContactSettings } from '@/lib/settings-schema'
 import { contactLinks, whatsappUrl } from './contact-links'
 import { Logo } from './Logo'
 import { WhatsAppButton } from './WhatsAppButton'
 
-const firstDiscount = QUANTITY_DISCOUNTS.find((d) => d.pct > 0)
+interface FooterColumn {
+  title: string
+  links: { href: string; label: string }[]
+  note?: string
+}
 
-const COLUMNS: { title: string; links: { href: string; label: string }[]; note?: string }[] = [
-  {
-    title: 'Tienda',
-    links: [
-      ...PRODUCTS.map((p) => ({ href: `/productos/${p.slug}`, label: p.namePlural })),
-      { href: '/personalizar', label: 'Diseña el tuyo' },
-    ],
-  },
-  {
-    title: 'Ayuda',
-    links: [
-      { href: '/como-funciona', label: 'Cómo funciona' },
-      { href: '/preguntas-frecuentes', label: 'Preguntas frecuentes' },
-      { href: '/seguimiento', label: 'Seguimiento de pedido' },
-      { href: '/contacto', label: 'Contacto' },
-    ],
-  },
-  {
-    title: 'Empresas',
-    note: firstDiscount
-      ? `Equipos, empresas y eventos: descuentos por volumen desde ${firstDiscount.minQty} unidades.`
-      : 'Equipos, empresas y eventos.',
-    links: [{ href: '/empresas', label: 'Pedir presupuesto' }],
-  },
-  {
-    title: 'Legal',
-    links: [
-      { href: '/legal/aviso-legal', label: 'Aviso legal' },
-      { href: '/legal/privacidad', label: 'Privacidad' },
-      { href: '/legal/cookies', label: 'Cookies' },
-      { href: '/legal/condiciones', label: 'Condiciones de compra' },
-    ],
-  },
-]
+/** Columnas de enlaces; la nota de empresas cita el primer descuento por volumen efectivo. */
+function columns(discounts: readonly QuantityDiscount[]): FooterColumn[] {
+  const firstDiscount = discounts.find((d) => d.pct > 0)
+  return [
+    {
+      title: 'Tienda',
+      links: [
+        ...PRODUCTS.map((p) => ({ href: `/productos/${p.slug}`, label: p.namePlural })),
+        { href: '/personalizar', label: 'Diseña el tuyo' },
+      ],
+    },
+    {
+      title: 'Ayuda',
+      links: [
+        { href: '/como-funciona', label: 'Cómo funciona' },
+        { href: '/preguntas-frecuentes', label: 'Preguntas frecuentes' },
+        { href: '/seguimiento', label: 'Seguimiento de pedido' },
+        { href: '/contacto', label: 'Contacto' },
+      ],
+    },
+    {
+      title: 'Empresas',
+      note: firstDiscount
+        ? `Equipos, empresas y eventos: descuentos por volumen desde ${firstDiscount.minQty} unidades.`
+        : 'Equipos, empresas y eventos.',
+      links: [{ href: '/empresas', label: 'Pedir presupuesto' }],
+    },
+    {
+      title: 'Legal',
+      links: [
+        { href: '/legal/aviso-legal', label: 'Aviso legal' },
+        { href: '/legal/privacidad', label: 'Privacidad' },
+        { href: '/legal/cookies', label: 'Cookies' },
+        { href: '/legal/condiciones', label: 'Condiciones de compra' },
+      ],
+    },
+  ]
+}
 
 const linkClass =
   'inline-flex min-h-8 pointer-coarse:min-h-11 items-center rounded-md text-cream/85 underline-offset-4 hover:text-yellow hover:underline focus-visible:outline-yellow'
 
 /**
- * Pie de la web. `contact` son los datos efectivos (editables en el panel), que llegan desde el layout del sitio.
- * Sin `contact` (la página de error es un componente de cliente y no puede leer los ajustes) no se muestran datos de
- * contacto: mejor ninguno que unos desactualizados.
+ * Pie de la web. `contact` son los datos efectivos (editables en el panel) que llegan desde el layout del sitio; envío
+ * y descuentos salen del catálogo efectivo. Sin `contact` (la página de error es un componente de cliente y no puede
+ * leer los ajustes) no se muestran datos de contacto, y sin `catalog` se usan los valores en código.
  */
-export function SiteFooter({ contact }: { contact?: ContactSettings }) {
-  const { shipping } = site
+export function SiteFooter({ contact, catalog = DEFAULT_CATALOG }: { contact?: ContactSettings; catalog?: Catalog }) {
+  const { shipping } = catalog
+  const COLUMNS = columns(catalog.quantityDiscounts)
   const all = contact ? contactLinks(contact) : []
   const links = all.filter((l) => l.key === 'email' || l.key === 'phone' || l.key === 'whatsapp')
   const social = all.filter((l) => l.key === 'instagram' || l.key === 'tiktok')

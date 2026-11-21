@@ -7,8 +7,8 @@ import { JsonLd } from '@/components/content/JsonLd'
 import { PageHero } from '@/components/content/PageHero'
 import { pageMetadata } from '@/components/content/metadata'
 import { whatsappHref } from '@/components/content/contact-info'
-import { FAQ_GROUPS, faqPlainText } from '@/lib/faq'
-import { getSettings } from '@/lib/settings'
+import { faqGroups, faqPlainText, type FaqGroup } from '@/lib/faq'
+import { getCatalog, getSettings } from '@/lib/settings'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Preguntas frecuentes',
@@ -17,22 +17,24 @@ export const metadata: Metadata = pageMetadata({
   path: '/preguntas-frecuentes',
 })
 
-const faqJsonLd = {
+const faqJsonLd = (groups: FaqGroup[]) => ({
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
   inLanguage: 'es-ES',
-  mainEntity: FAQ_GROUPS.flatMap((g) =>
+  mainEntity: groups.flatMap((g) =>
     g.items.map((item) => ({
       '@type': 'Question',
       name: item.question,
       acceptedAnswer: { '@type': 'Answer', text: faqPlainText(item.answer) },
     })),
   ),
-}
+})
 
 export default async function PreguntasFrecuentesPage() {
-  const { contact } = await getSettings()
+  const [{ contact }, catalog] = await Promise.all([getSettings(), getCatalog()])
   const whatsapp = whatsappHref(contact.whatsapp)
+  // Las respuestas citan importes, plazos y zonas: siempre los efectivos (editables en el panel).
+  const FAQ_GROUPS = faqGroups(catalog)
   return (
     <>
       <PageHero tone="violet" crumbs={[{ label: 'Preguntas frecuentes' }]} eyebrow="Dudas habituales" title="Preguntas frecuentes">
@@ -79,7 +81,7 @@ export default async function PreguntasFrecuentesPage() {
           </div>
         </div>
       </Section>
-      <JsonLd data={faqJsonLd} />
+      <JsonLd data={faqJsonLd(FAQ_GROUPS)} />
     </>
   )
 }

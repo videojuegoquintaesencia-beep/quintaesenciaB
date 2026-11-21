@@ -2,6 +2,7 @@
 import { TriangleExclamationPoint, Info, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { CheckoutForm } from '@/components/checkout/CheckoutForm'
 import { PaymentSection } from '@/components/checkout/PaymentSection'
 import { CheckoutError, postJson, type ApiFailure } from '@/components/checkout/api'
@@ -53,6 +54,8 @@ export function ProposalAcceptClient({
   /** Razón social del titular (ajustes del panel), para el texto de los consentimientos. */
   legalName: string
 }) {
+  // Reglas de envío efectivas (editables en el panel): mismas que usa el checkout para validar el código postal.
+  const { shipping: rules } = useCatalog()
   const router = useRouter()
   const [values, setValues] = useState<FormValues>(() => ({
     ...emptyValues,
@@ -83,14 +86,14 @@ export function ProposalAcceptClient({
     const cp = raw.replace(/\D/g, '').slice(0, 5)
     setValues((v) => {
       const next = { ...v, postalCode: cp }
-      if (cp.length === 5 && isPostalCodeDeliverable(cp)) next.province = provinceFromPostalCode(cp) ?? v.province
+      if (cp.length === 5 && isPostalCodeDeliverable(cp, rules)) next.province = provinceFromPostalCode(cp) ?? v.province
       return next
     })
-  }, [])
+  }, [rules])
 
   const errors: FormErrors = useMemo(
-    () => (attempted ? { ...validateForm(values), ...serverErrors } : serverErrors),
-    [attempted, values, serverErrors],
+    () => (attempted ? { ...validateForm(values, rules), ...serverErrors } : serverErrors),
+    [attempted, values, rules, serverErrors],
   )
 
   const focusFirstError = useCallback(() => {
@@ -114,7 +117,7 @@ export function ProposalAcceptClient({
         if (resume) return true
         setAttempted(true)
         setServerErrors({})
-        const found = validateForm(valuesRef.current)
+        const found = validateForm(valuesRef.current, rules)
         if (Object.keys(found).length > 0) {
           focusFirstError()
           return false
@@ -140,7 +143,7 @@ export function ProposalAcceptClient({
       onFailure: (f) => setFailure(f),
       onNotice: (m) => setNotice(m),
     }),
-    [processing, resume, quoteId, token, router, focusFirstError],
+    [processing, resume, quoteId, token, router, focusFirstError, rules],
   )
 
   return (

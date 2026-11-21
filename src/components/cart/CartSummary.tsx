@@ -1,11 +1,12 @@
+'use client'
 import { Truck } from 'lucide-react'
 import Link from 'next/link'
-import { site } from '@/config/site'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { computeCartTotals } from '@/lib/pricing'
 import { formatEUR, unidades } from '@/lib/format'
 import { ButtonLink } from '@/components/ui/Button'
 
-/** Resumen del carrito: subtotal, envío estimado, total y progreso hacia el envío gratis. */
+/** Resumen del carrito: subtotal, envío estimado, total y progreso hacia el envío gratis (importes del catálogo efectivo). */
 export function CartSummary({
   lineTotals,
   units,
@@ -16,10 +17,11 @@ export function CartSummary({
   /** true si alguna línea tiene un problema que impide tramitar el pedido. */
   blocked: boolean
 }) {
-  const totals = computeCartTotals(lineTotals)
-  const shipping = totals.shippingCents ?? 0
-  const free = site.shipping.freeFromCents
-  const pct = Math.min(100, Math.round((totals.subtotalCents / free) * 100))
+  const { shipping, production, b2b } = useCatalog()
+  const totals = computeCartTotals(lineTotals, undefined, shipping)
+  const shippingCents = totals.shippingCents ?? 0
+  const free = shipping.freeFromCents
+  const pct = free > 0 ? Math.min(100, Math.round((totals.subtotalCents / free) * 100)) : 100
 
   return (
     <aside aria-labelledby="resumen-titulo" className="card bg-yellow-soft p-5 sm:p-6 lg:sticky lg:top-6">
@@ -33,7 +35,7 @@ export function CartSummary({
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-ink-soft">Envío (estimado)</dt>
-          <dd className="font-bold">{shipping === 0 ? 'Gratis' : formatEUR(shipping)}</dd>
+          <dd className="font-bold">{shippingCents === 0 ? 'Gratis' : formatEUR(shippingCents)}</dd>
         </div>
         <div className="flex justify-between gap-3 border-t-2 border-ink pt-3 text-xl">
           <dt className="font-display font-semibold">Total</dt>
@@ -81,13 +83,13 @@ export function CartSummary({
         )}
       </div>
       <p className="mt-3 text-sm text-ink-soft">
-        Envío a la península y Baleares (+{formatEUR(site.shipping.balearesExtraCents)}). El coste exacto se calcula con tu código
-        postal. Producción de {site.production.leadDaysMin} a {site.production.leadDaysMax} días laborables.
+        Envío a {shipping.deliveryZonesLabel} (Baleares: +{formatEUR(shipping.balearesExtraCents)}). El coste exacto se calcula con tu código
+        postal. Producción de {production.leadDaysMin} a {production.leadDaysMax} días laborables.
       </p>
 
-      {units >= site.b2b.quoteFromUnits && (
+      {units >= b2b.quoteFromUnits && (
         <p className="mt-4 rounded-2xl border-2 border-ink bg-violet-soft p-3 text-sm">
-          <strong>¿Pedido grande?</strong> Con {site.b2b.quoteFromUnits} unidades o más podemos ofrecerte precio por volumen a
+          <strong>¿Pedido grande?</strong> Con {b2b.quoteFromUnits} unidades o más podemos ofrecerte precio por volumen a
           medida.{' '}
           <Link href="/empresas" className="font-bold text-violet-deep underline">
             Pide presupuesto para empresas

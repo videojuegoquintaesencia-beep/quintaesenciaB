@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { ProductMockup } from '@/components/mockups'
-import { PRODUCTS, fromPriceCents } from '@/config/products'
+import { fromPriceCents } from '@/config/products'
 import { formatEUR } from '@/lib/format'
+import { getCatalog } from '@/lib/settings'
 
 export const metadata: Metadata = {
   title: 'Personaliza tu producto',
@@ -15,7 +16,9 @@ export const metadata: Metadata = {
 
 const TONES = ['bg-pink-soft', 'bg-yellow-soft', 'bg-teal-soft', 'bg-violet-soft'] as const
 
-export default function PersonalizarPage() {
+export default async function PersonalizarPage() {
+  // Precio "desde" efectivo de cada producto (editable en el panel).
+  const { products } = await getCatalog()
   return (
     <div className="bg-dots-soft min-h-full px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-5xl">
@@ -28,7 +31,7 @@ export default function PersonalizarPage() {
         </header>
 
         <ul className="grid gap-5 sm:grid-cols-2 sm:gap-6">
-          {PRODUCTS.map((p, i) => (
+          {products.map((p, i) => (
             <li key={p.id}>
               <Link
                 href={`/personalizar/${p.id}`}

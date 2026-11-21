@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { ShoppingCart } from 'lucide-react'
-import { QUANTITY_DISCOUNTS, getColor, getProduct, isSingleSize } from '@/config/products'
+import { getColor, isSingleSize } from '@/config/products'
 import { site } from '@/config/site'
+import { useCatalog, useCatalogProduct } from '@/components/catalog/CatalogProvider'
 import { cn } from '@/lib/cn'
 import { useEditor } from '@/lib/editor/store'
 import { formatEUR, formatNumber, unidades } from '@/lib/format'
@@ -24,7 +25,8 @@ function Row({ label, value, strong, muted }: { label: string; value: string; st
 export function Quantities() {
   const productId = useEditor((s) => s.productId)
   const sizes = useEditor((s) => s.sizes)
-  const product = getProduct(productId)
+  // Producto con suplementos de talla y tope de unidades efectivos (editables en el panel).
+  const product = useCatalogProduct(productId)
   if (!product) return null
   const total = totalQuantity(sizes)
   const remaining = product.maxQtyPerLine - total
@@ -70,7 +72,7 @@ export function Quantities() {
           )
         })}
       </ul>
-      {product.sizeSurchargesCents && (
+      {Object.keys(product.sizeSurchargesCents ?? {}).length > 0 && (
         <p className="field-hint">Las tallas con suplemento se suman por unidad.</p>
       )}
     </div>
@@ -83,12 +85,13 @@ export function SummaryPanel() {
   const colorId = useEditor((s) => s.design.colorId)
   const sizes = useEditor((s) => s.sizes)
   const price = useLinePrice()
-  const product = getProduct(productId)
+  const catalog = useCatalog()
+  const product = useCatalogProduct(productId)
   const color = product ? getColor(product, colorId) : undefined
   if (!product) return null
 
   const qty = totalQuantity(sizes)
-  const next = QUANTITY_DISCOUNTS.find((d) => d.minQty > qty)
+  const next = catalog.quantityDiscounts.find((d) => d.minQty > qty)
   const sizeSurchargeLines = Object.entries(sizes)
     .filter(([id, q]) => q > 0 && product.sizeSurchargesCents?.[id])
     .map(([id, q]) => `${product.sizes.find((s) => s.id === id)?.label ?? id} ×${q}`)
@@ -107,7 +110,7 @@ export function SummaryPanel() {
         </p>
         {next && (
           <p className="mt-1 rounded-xl border-2 border-ink bg-yellow-soft p-2.5 text-sm font-bold">
-            Con {next.minQty} unidades, {next.pct}&nbsp;% de descuento
+            Con {next.minQty} unidades, {formatNumber(next.pct)}&nbsp;% de descuento
             {qty > 0 ? ` (te faltan ${next.minQty - qty})` : ''}.
           </p>
         )}
@@ -142,7 +145,7 @@ export function SummaryPanel() {
                   <Row label={`Suplemento de talla (${sizeSurchargeLines.join(', ')})`} value={formatEUR(price.sizeSurchargeCents)} />
                 )}
                 {price.discountCents > 0 && (
-                  <Row label={`Descuento por volumen (${price.discountPct}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
+                  <Row label={`Descuento por volumen (${formatNumber(price.discountPct)}\u00a0%)`} value={`−${formatEUR(price.discountCents)}`} />
                 )}
               </dl>
               <div className="mt-1 border-t-2 border-ink pt-1">

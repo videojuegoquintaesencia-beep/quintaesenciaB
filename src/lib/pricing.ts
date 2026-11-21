@@ -156,7 +156,7 @@ export function isValidSpanishPostalCode(value: string): boolean {
 }
 
 /** ¿Enviamos a este código postal desde la tienda online? */
-export function isPostalCodeDeliverable(postalCode: string, rules: ShippingRules = DEFAULT_CATALOG.shipping): boolean {
+export function isPostalCodeDeliverable(postalCode: string, rules: Pick<ShippingRules, 'excludedPostalPrefixes'> = DEFAULT_CATALOG.shipping): boolean {
   const cp = normalizePostalCode(postalCode)
   if (!isValidSpanishPostalCode(cp)) return false
   return !rules.excludedPostalPrefixes.includes(cp.slice(0, 2))

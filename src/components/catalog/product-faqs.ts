@@ -1,6 +1,7 @@
-import { QUANTITY_DISCOUNTS, type Product } from '@/config/products'
+import type { Product } from '@/config/products'
 import { site } from '@/config/site'
-import { formatEUR } from '@/lib/format'
+import { formatEUR, formatNumber } from '@/lib/format'
+import type { Catalog } from '@/lib/settings-schema'
 import { sizeLabel } from './appearance'
 
 export interface Faq {
@@ -43,9 +44,9 @@ function specific(product: Product): Faq {
   }
 }
 
-/** Preguntas frecuentes de un producto. Todo sale del catálogo y de la configuración del sitio. */
-export function productFaqs(product: Product): Faq[] {
-  const discounts = QUANTITY_DISCOUNTS.filter((d) => d.pct > 0)
+/** Preguntas frecuentes de un producto. Precios, descuentos, plazos y transportista salen del catálogo efectivo. */
+export function productFaqs(product: Product, catalog: Catalog): Faq[] {
+  const discounts = catalog.quantityDiscounts.filter((d) => d.pct > 0)
   const first = discounts[0]
   const last = discounts[discounts.length - 1]
   const names = site.uploads.acceptedArtworkTypes.map((t) => FORMAT_NAMES[t] ?? t)
@@ -57,7 +58,7 @@ export function productFaqs(product: Product): Faq[] {
     {
       question: '¿Hay un mínimo de unidades?',
       answer: first
-        ? `No, puedes pedir una sola unidad. Si pides varias iguales, aplicamos un descuento desde ${first.minQty} unidades (${first.pct}\u00a0%) que sube hasta el ${last.pct}\u00a0% desde ${last.minQty} unidades.`
+        ? `No, puedes pedir una sola unidad. Si pides varias iguales, aplicamos un descuento desde ${first.minQty} unidades (${formatNumber(first.pct)}\u00a0%) que sube hasta el ${formatNumber(last.pct)}\u00a0% desde ${last.minQty} unidades.`
         : 'No, puedes pedir una sola unidad.',
     },
     {
@@ -66,7 +67,7 @@ export function productFaqs(product: Product): Faq[] {
     },
     {
       question: '¿Cuánto tarda en llegar?',
-      answer: `La producción lleva entre ${site.production.leadDaysMin} y ${site.production.leadDaysMax} días laborables y después se envía por ${site.shipping.carrierLabel}. Los pedidos grandes o con fecha límite, mejor consúltanoslos antes.`,
+      answer: `La producción lleva entre ${catalog.production.leadDaysMin} y ${catalog.production.leadDaysMax} días laborables y después se envía por ${catalog.shipping.carrierLabel}. Los pedidos grandes o con fecha límite, mejor consúltanoslos antes.`,
     },
   ]
 }

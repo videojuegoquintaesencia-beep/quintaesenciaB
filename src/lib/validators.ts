@@ -4,9 +4,9 @@
  */
 import { z } from 'zod'
 import './zod-es'
-import { addressZoneIssue } from './es-provinces'
+import { addressZoneIssue, undeliverableMessage, type DeliveryRules } from './es-provinces'
 import { isPostalCodeDeliverable, isValidSpanishPostalCode, normalizePostalCode } from './pricing'
-import { site } from '@/config/site'
+import { DEFAULT_CATALOG } from './settings-schema'
 
 const cleanText = (max: number, min = 1, msg = 'Campo obligatorio') =>
   z.string().trim().min(min, msg).max(max, `Máximo ${max} caracteres`)
@@ -56,15 +56,19 @@ export const optionalPhoneSchema = z
   .refine((v) => v === '' || /^\+?\d{9,15}$/.test(v), 'Introduce un teléfono válido')
   .optional()
 
-export const postalCodeSchema = z
-  .string()
-  .trim()
-  .transform(normalizePostalCode)
-  .refine(isValidSpanishPostalCode, 'Código postal no válido')
-  .refine(
-    isPostalCodeDeliverable,
-    `Aún no enviamos a ${site.shipping.excludedZonesLabel} desde la tienda. Escríbenos y lo vemos.`,
-  )
+/**
+ * Código postal español dentro de la zona de envío. Las zonas excluidas se editan en el panel, así que el esquema
+ * se construye con las reglas efectivas (`catalog.shipping`): en el servidor desde `getCatalog()`, en el navegador
+ * desde `useCatalog()`.
+ */
+export function postalCodeSchemaFor(rules: DeliveryRules) {
+  return z
+    .string()
+    .trim()
+    .transform(normalizePostalCode)
+    .refine(isValidSpanishPostalCode, 'Código postal no válido')
+    .refine((cp) => isPostalCodeDeliverable(cp, rules), undeliverableMessage(rules))
+}
 
 /** NIF/NIE/CIF en formato básico (no comprueba la letra de control). Opcional. */
 export const taxIdSchema = z
@@ -74,19 +78,27 @@ export const taxIdSchema = z
   .refine((v) => v === '' || /^[A-Z0-9][0-9]{7}[A-Z0-9]$/.test(v), 'NIF/CIF no válido')
   .optional()
 
-export const addressSchema = z.object({
-  name: cleanText(100, 2, 'Nombre y apellidos'),
-  line1: cleanText(160, 4, 'Dirección'),
-  line2: z.string().trim().max(160, 'Máximo 160 caracteres').optional(),
-  postalCode: postalCodeSchema,
-  city: cleanText(80, 2, 'Localidad'),
-  province: cleanText(80, 2, 'Provincia'),
-  country: z.literal('ES').default('ES'),
-}).superRefine((address, ctx) => {
-  // El envío depende del código postal: provincia y localidad no pueden contradecirlo (ni apuntar a zonas sin envío).
-  const issue = addressZoneIssue(address)
-  if (issue) ctx.addIssue({ code: 'custom', path: [issue.field], message: issue.message })
-})
+/** Dirección de envío validada con las reglas de envío efectivas (ver `postalCodeSchemaFor`). */
+export function addressSchemaFor(rules: DeliveryRules) {
+  return z
+    .object({
+      name: cleanText(100, 2, 'Nombre y apellidos'),
+      line1: cleanText(160, 4, 'Dirección'),
+      line2: z.string().trim().max(160, 'Máximo 160 caracteres').optional(),
+      postalCode: postalCodeSchemaFor(rules),
+      city: cleanText(80, 2, 'Localidad'),
+      province: cleanText(80, 2, 'Provincia'),
+      country: z.literal('ES').default('ES'),
+    })
+    .superRefine((address, ctx) => {
+      // El envío depende del código postal: provincia y localidad no pueden contradecirlo (ni apuntar a zonas sin envío).
+      const issue = addressZoneIssue(address, rules)
+      if (issue) ctx.addIssue({ code: 'custom', path: [issue.field], message: issue.message })
+    })
+}
+
+/** Dirección con las reglas de envío por defecto (las de código). El checkout usa `addressSchemaFor(catalog.shipping)`. */
+export const addressSchema = addressSchemaFor(DEFAULT_CATALOG.shipping)
 export type Address = z.infer<typeof addressSchema>
 
 export const COMPANY_REQUIRED_MESSAGE = 'Escribe el nombre de la empresa para la factura.'

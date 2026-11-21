@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { ArrowRight, Package, Palette, Printer } from 'lucide-react'
-import { site } from '@/config/site'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { formatEUR } from '@/lib/format'
+import type { Catalog } from '@/lib/settings-schema'
 
-export function HowItWorks() {
-  const { production, shipping } = site
+export function HowItWorks({ catalog }: { catalog: Catalog }) {
+  const { production, shipping } = catalog
   const steps = [
     {
       icon: Palette,

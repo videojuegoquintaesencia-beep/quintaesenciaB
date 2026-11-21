@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { DELIVERABLE_PROVINCES, addressZoneIssue, provinceFromPostalCode } from '@/lib/es-provinces'
+import { addressZoneIssue, deliverableProvinces, provinceFromPostalCode } from '@/lib/es-provinces'
+import { DEFAULT_CATALOG } from '@/lib/settings-schema'
+
+// Reglas de envío en código (35/38/51/52 excluidos): las provincias entregables y los mensajes salen de ellas.
+const RULES = DEFAULT_CATALOG.shipping
+const DELIVERABLE_PROVINCES = deliverableProvinces(RULES.excludedPostalPrefixes)
 
 describe('provinceFromPostalCode', () => {
   it('devuelve la provincia de un código postal completo o de su prefijo', () => {
@@ -26,7 +31,14 @@ describe('provinceFromPostalCode', () => {
   })
 })
 
-describe('DELIVERABLE_PROVINCES', () => {
+describe('deliverableProvinces', () => {
+  it('sin prefijos excluidos incluye Canarias, Ceuta y Melilla (52 provincias)', () => {
+    const all = deliverableProvinces([])
+    expect(all).toHaveLength(52)
+    expect(all).toContain('Las Palmas')
+    expect(all).toContain('Melilla')
+  })
+
   it('son las 52 provincias menos Las Palmas, Santa Cruz de Tenerife, Ceuta y Melilla', () => {
     expect(DELIVERABLE_PROVINCES).toHaveLength(48)
     for (const excluded of ['Las Palmas', 'Santa Cruz de Tenerife', 'Ceuta', 'Melilla']) expect(DELIVERABLE_PROVINCES).not.toContain(excluded)
@@ -43,7 +55,7 @@ describe('DELIVERABLE_PROVINCES', () => {
 })
 
 describe('addressZoneIssue', () => {
-  const ok = (postalCode: string, province: string, city = 'Ciudad') => addressZoneIssue({ postalCode, province, city })
+  const ok = (postalCode: string, province: string, city = 'Ciudad') => addressZoneIssue({ postalCode, province, city }, RULES)
 
   it('acepta la provincia que corresponde al código postal, en castellano, cooficial o con alias', () => {
     expect(ok('28001', 'Madrid')).toBeNull()

@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { QUANTITY_DISCOUNTS, getArea, isSingleSize, type PrintArea, type PrintTier, type Product } from '@/config/products'
+import { getArea, isSingleSize, type PrintArea, type PrintTier, type Product, type QuantityDiscount } from '@/config/products'
 import { site } from '@/config/site'
 import { formatEUR, formatNumber, unidades } from '@/lib/format'
 import { quantityDiscountPct } from '@/lib/pricing'
+import type { Catalog } from '@/lib/settings-schema'
 import { sizeLabel } from './appearance'
 
 function tierRows(tiers: PrintTier[], area?: PrintArea) {
@@ -18,33 +19,35 @@ function tierRows(tiers: PrintTier[], area?: PrintArea) {
   })
 }
 
-function unitsRange(index: number): string {
-  const current = QUANTITY_DISCOUNTS[index]
-  const next = QUANTITY_DISCOUNTS[index + 1]
+function unitsRange(discounts: readonly QuantityDiscount[], index: number): string {
+  const current = discounts[index]
+  const next = discounts[index + 1]
   if (!next) return `${current.minQty} unidades o más`
   if (next.minQty - 1 === current.minQty) return unidades(current.minQty)
   return `${current.minQty} a ${next.minQty - 1} unidades`
 }
 
 /** Ejemplo con cifras reales: la primera zona del producto, su segundo escalón y 10 unidades. */
-function workedExample(product: Product) {
+function workedExample(product: Product, discounts: readonly QuantityDiscount[]) {
   const [zoneId, tiers] = Object.entries(product.printTiers)[0] ?? []
   const area = zoneId ? getArea(product, zoneId) : undefined
   const tier = tiers?.[Math.min(1, tiers.length - 1)]
   if (!area || !tier) return null
   const qty = 10
   const unitCents = product.basePriceCents + tier.cents
-  const pct = quantityDiscountPct(qty)
+  const pct = quantityDiscountPct(qty, discounts)
   const grossCents = unitCents * qty
   const totalCents = grossCents - Math.round((grossCents * pct) / 100)
   return { area, tier, qty, unitCents, pct, grossCents, totalCents }
 }
 
-export function ProductPricing({ product }: { product: Product }) {
+/** Cómo se calcula el precio. `product` lleva los precios efectivos y `catalog` los descuentos por volumen. */
+export function ProductPricing({ product, catalog }: { product: Product; catalog: Catalog }) {
+  const discounts = catalog.quantityDiscounts
   const zones = Object.entries(product.printTiers).map(([id, tiers]) => ({ id, tiers, area: getArea(product, id) }))
   const cheapestPrint = Math.min(...zones.map((z) => z.tiers[0]?.cents ?? 0))
-  const maxDiscount = Math.max(...QUANTITY_DISCOUNTS.map((d) => d.pct))
-  const example = workedExample(product)
+  const maxDiscount = Math.max(...discounts.map((d) => d.pct))
+  const example = workedExample(product, discounts)
   const surcharges = [
     ...Object.entries(product.sizeSurchargesCents ?? {}).map(([size, cents]) => `Talla ${size}: +${formatEUR(cents)} por unidad`),
     ...product.colors.filter((c) => c.surchargeCents).map((c) => `${c.name}: +${formatEUR(c.surchargeCents ?? 0)} por unidad`),
@@ -65,7 +68,7 @@ export function ProductPricing({ product }: { product: Product }) {
         </li>
         <li className="card-flat bg-teal-soft p-5">
           <p className="font-display text-sm font-semibold uppercase tracking-wide">− El descuento</p>
-          <p className="mt-2 font-display text-3xl font-bold">hasta {maxDiscount}&nbsp;%</p>
+          <p className="mt-2 font-display text-3xl font-bold">hasta {formatNumber(maxDiscount)}&nbsp;%</p>
           <p className="mt-1 text-ink-soft">si pides varias unidades iguales.</p>
         </li>
       </ol>
@@ -123,10 +126,10 @@ export function ProductPricing({ product }: { product: Product }) {
             </tr>
           </thead>
           <tbody>
-            {QUANTITY_DISCOUNTS.map((d, i) => (
+            {discounts.map((d, i) => (
               <tr key={d.minQty} className="border-b border-ink/15 last:border-0">
-                <th scope="row" className="px-4 py-2.5 font-bold">{unitsRange(i)}</th>
-                <td className="px-4 py-2.5 text-right font-display text-lg font-semibold">{d.pct === 0 ? 'Sin descuento' : `${d.pct}\u00a0%`}</td>
+                <th scope="row" className="px-4 py-2.5 font-bold">{unitsRange(discounts, i)}</th>
+                <td className="px-4 py-2.5 text-right font-display text-lg font-semibold">{d.pct === 0 ? 'Sin descuento' : `${formatNumber(d.pct)}\u00a0%`}</td>
               </tr>
             ))}
           </tbody>
@@ -157,7 +160,7 @@ export function ProductPricing({ product }: { product: Product }) {
             {example.qty} × {formatEUR(example.unitCents)} = {formatEUR(example.grossCents)}
             {example.pct > 0 && (
               <>
-                , menos un {example.pct}&nbsp;% = <strong className="text-ink">{formatEUR(example.totalCents)}</strong>
+                , menos un {formatNumber(example.pct)}&nbsp;% =<strong className="text-ink">{formatEUR(example.totalCents)}</strong>
               </>
             )}
             .

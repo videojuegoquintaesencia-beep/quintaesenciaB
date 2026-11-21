@@ -8,13 +8,13 @@ import { OrderItems } from '@/components/checkout/OrderItems'
 import { OrderTimeline } from '@/components/checkout/OrderTimeline'
 import { Badge } from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
-import { site } from '@/config/site'
 import { trackingUrlFor } from '@/lib/carriers'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { isValidId } from '@/lib/ids'
 import { getInvoiceRecord } from '@/lib/invoices'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from '@/lib/order-status'
 import { getOrderByToken, type Order } from '@/lib/orders'
+import { getCatalog } from '@/lib/settings'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -54,6 +54,8 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
   const thanks = justPaid(order)
   const pending = order.status === 'pending_payment'
   const a = order.shipping
+  // Plazos y transportista efectivos (editables en el panel).
+  const { production, shipping: shippingRules } = await getCatalog()
   const trackingUrl = trackingUrlFor(order.carrier, order.trackingCode)
   const invoice = pending ? null : await getInvoiceRecord(order.id)
   const invoiceHref = (doc: 'invoice' | 'rectification') =>
@@ -78,7 +80,7 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
         </p>
         <p className="mt-3 max-w-2xl text-ink-soft">
           {thanks
-            ? `Te hemos enviado la confirmación a ${order.email}. Producimos tu pedido en ${site.production.leadDaysMin} a ${site.production.leadDaysMax} días laborables y después sale por ${site.shipping.carrierLabel}.`
+            ? `Te hemos enviado la confirmación a ${order.email}. Producimos tu pedido en ${production.leadDaysMin} a ${production.leadDaysMax} días laborables y después sale por ${shippingRules.carrierLabel}.`
             : ORDER_STATUS_CUSTOMER_TEXT[order.status]}
         </p>
         {order.payment.provider === 'demo' && (

@@ -1,4 +1,5 @@
-import { site } from '@/config/site'
+'use client'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { LineThumb } from '@/components/cart/LineThumb'
 import { lineTitle, primaryPreviewId } from '@/components/cart/line-utils'
 import type { PricedLine } from '@/components/cart/lines'
@@ -15,6 +16,8 @@ export function CheckoutSummary({
   totals: CartTotals
   postalCodeKnown: boolean
 }) {
+  // Plazos y transportista efectivos (editables en el panel).
+  const { production, shipping: rules } = useCatalog()
   const shipping = totals.shippingCents
   return (
     <aside aria-labelledby="resumen-pedido" className="card bg-yellow-soft p-5 sm:p-6 lg:sticky lg:top-6">
@@ -57,8 +60,7 @@ export function CheckoutSummary({
         </p>
       )}
       <p className="mt-3 text-sm text-ink-soft">
-        Producción de {site.production.leadDaysMin} a {site.production.leadDaysMax} días laborables y después envío por{' '}
-        {site.shipping.carrierLabel}.
+        Producción de {production.leadDaysMin} a {production.leadDaysMax} días laborables y después envío por {rules.carrierLabel}.
       </p>
     </aside>
   )

@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { ArrowRight, FileText } from 'lucide-react'
-import { QUANTITY_DISCOUNTS } from '@/config/products'
 import { site } from '@/config/site'
 import { Section } from '@/components/ui/Section'
+import { formatNumber } from '@/lib/format'
+import type { Catalog } from '@/lib/settings-schema'
 
 const AUDIENCES = ['Equipos', 'Empresas', 'Eventos']
 
-export function BusinessStrip() {
-  const discounts = QUANTITY_DISCOUNTS.filter((d) => d.pct > 0)
+export function BusinessStrip({ catalog }: { catalog: Catalog }) {
+  const discounts = catalog.quantityDiscounts.filter((d) => d.pct > 0)
   return (
     <Section aria-labelledby="empresas-titulo" tone="ink" className="border-b-2 border-ink">
       <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -44,7 +45,7 @@ export function BusinessStrip() {
                 key={d.minQty}
                 className={`rounded-2xl border-2 border-ink p-4 text-ink shadow-[4px_4px_0_0_var(--color-cream)] ${['bg-pink-soft', 'bg-yellow-soft', 'bg-teal-soft', 'bg-violet-soft'][i % 4]} ${i === discounts.length - 1 && discounts.length % 2 === 1 ? 'col-span-2' : ''}`}
               >
-                <p className="font-display text-3xl font-bold leading-none">{d.pct}&nbsp;%</p>
+                <p className="font-display text-3xl font-bold leading-none">{formatNumber(d.pct)}&nbsp;%</p>
                 <p className="mt-1.5 text-sm font-bold">desde {d.minQty} unidades</p>
               </li>
             ))}

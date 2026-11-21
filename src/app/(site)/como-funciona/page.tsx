@@ -12,8 +12,9 @@ import { PrintAreaTable } from '@/components/content/PrintAreaTable'
 import { StepList, type Step } from '@/components/content/StepList'
 import { TechniqueTable } from '@/components/content/TechniqueTable'
 import { pageMetadata } from '@/components/content/metadata'
-import { site } from '@/config/site'
 import { formatEUR } from '@/lib/format'
+import { getCatalog } from '@/lib/settings'
+import type { Catalog } from '@/lib/settings-schema'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Cómo funciona la impresión DTF y tu pedido',
@@ -21,8 +22,6 @@ export const metadata: Metadata = pageMetadata({
     'Qué es el DTF, por qué encaja con la personalización, cómo se compara con vinilo, serigrafía y sublimación, plazos del pedido y cómo preparar tu diseño.',
   path: '/como-funciona',
 })
-
-const { production, shipping } = site
 
 const DTF_STEPS: Step[] = [
   {
@@ -52,7 +51,8 @@ const WHY: Feature[] = [
   { icon: Sparkles, title: 'Tacto flexible', text: 'El estampado es una capa fina que acompaña a la tela. Se nota ligeramente al tacto, pero no queda rígido.' },
 ]
 
-const ORDER_STEPS: Step[] = [
+/** Pasos del pedido con los plazos y el envío efectivos (editables en el panel). */
+const orderSteps = ({ production, shipping }: Catalog): Step[] => [
   {
     title: 'Diseñas',
     text: 'Eliges producto y color en el personalizador, subes tu imagen o creas tu diseño con texto y elementos, y ves el precio al momento.',
@@ -78,7 +78,9 @@ const DO_LIST: { title: string; text: string }[] = [
   { title: 'Trazos y letras con cuerpo', text: 'Evita líneas más finas de 1 mm y textos de menos de 5 mm de alto: pierden definición y pueden no transferirse bien.' },
 ]
 
-export default function ComoFuncionaPage() {
+export default async function ComoFuncionaPage() {
+  const catalog = await getCatalog()
+  const { production, shipping } = catalog
   return (
     <>
       <PageHero
@@ -141,7 +143,7 @@ export default function ComoFuncionaPage() {
         <SectionHeading id="proceso" eyebrow="Tu pedido" title="De la idea a tu puerta">
           Producción de {production.leadDaysMin} a {production.leadDaysMax} días laborables, más el envío por {shipping.carrierLabel}.
         </SectionHeading>
-        <StepList steps={ORDER_STEPS} label="Pasos de tu pedido" />
+        <StepList steps={orderSteps(catalog)} label="Pasos de tu pedido" />
       </Section>
 
       <Section tone="pink" id="prepara-tu-diseno" aria-labelledby="prepara-titulo">

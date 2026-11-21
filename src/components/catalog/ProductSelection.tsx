@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { getProduct, type Product, type ProductColor, type ProductId } from '@/config/products'
+import type { Product, ProductColor, ProductId } from '@/config/products'
+import { useCatalogProduct } from './CatalogProvider'
 
 interface Selection {
   product: Product
@@ -12,10 +13,11 @@ const SelectionContext = createContext<Selection | null>(null)
 
 /**
  * Comparte el color elegido entre la galería, el selector y los botones "Personalizar" de la ficha de producto.
- * Las partes estáticas de la página (descripción, precios, preguntas…) siguen siendo componentes de servidor.
+ * El producto sale del catálogo efectivo (suplementos de color del panel). Las partes estáticas de la página
+ * (descripción, precios, preguntas…) siguen siendo componentes de servidor.
  */
 export function ProductSelectionProvider({ productId, children }: { productId: ProductId; children: ReactNode }) {
-  const product = getProduct(productId)
+  const product = useCatalogProduct(productId)
   if (!product) throw new Error(`Producto desconocido: ${productId}`)
   const [colorId, setColorId] = useState(product.colors[0].id)
 

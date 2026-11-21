@@ -1,10 +1,10 @@
 'use client'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-import { site } from '@/config/site'
+import { useMemo, type ReactNode } from 'react'
+import { useCatalog } from '@/components/catalog/CatalogProvider'
 import { LegalValue } from '@/components/content/LegalValue'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/Field'
-import { DELIVERABLE_PROVINCES } from '@/lib/es-provinces'
+import { deliverableProvinces } from '@/lib/es-provinces'
 import { isUndeliverablePostalCode, type FormErrors, type FormValues } from './form-state'
 
 function Section({ number, title, children }: { number: number; title: string; children: ReactNode }) {
@@ -83,9 +83,12 @@ export function CheckoutForm({
   legalName: string
   contactEmail: string
 }) {
-  const zoneProblem = isUndeliverablePostalCode(values.postalCode)
+  // Zonas sin envío y provincias disponibles según las reglas efectivas (editables en el panel).
+  const { shipping } = useCatalog()
+  const provinces = useMemo(() => deliverableProvinces(shipping.excludedPostalPrefixes), [shipping.excludedPostalPrefixes])
+  const zoneProblem = isUndeliverablePostalCode(values.postalCode, shipping)
   const postalError = zoneProblem
-    ? `Aún no enviamos a ${site.shipping.excludedZonesLabel} desde la tienda online.`
+    ? `Aún no enviamos a ${shipping.excludedZonesLabel} desde la tienda online.`
     : errors['ship.postalCode']
 
   return (
@@ -237,7 +240,7 @@ export function CheckoutForm({
           className="sm:col-span-2"
         >
           <option value="">Elige provincia</option>
-          {DELIVERABLE_PROVINCES.map((p) => (
+          {provinces.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>

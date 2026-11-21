@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { ImagePlus, Sticker, Type, Wand2 } from 'lucide-react'
-import { getProduct } from '@/config/products'
 import { ProductMockup } from '@/components/mockups'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { tierPrice } from '@/lib/pricing'
 import { formatEUR } from '@/lib/format'
+import { catalogProduct, type Catalog } from '@/lib/settings-schema'
 
 const FEATURES = [
   { icon: ImagePlus, title: 'Sube tu logo o tu foto', text: 'PNG, JPG, WebP o SVG. Lo colocas, lo mueves y le cambias el tamaño.' },
@@ -12,9 +12,9 @@ const FEATURES = [
   { icon: Wand2, title: 'Ve el resultado y el precio al momento', text: 'El precio se actualiza mientras diseñas, con el IVA incluido.' },
 ]
 
-/** Maqueta ilustrativa del personalizador. El precio del ejemplo sale del catálogo real. */
-function EditorPreview() {
-  const tee = getProduct('camiseta')
+/** Maqueta ilustrativa del personalizador. El precio del ejemplo sale del catálogo efectivo (precios del panel). */
+function EditorPreview({ catalog }: { catalog: Catalog }) {
+  const tee = catalogProduct(catalog, 'camiseta')
   const area = tee?.printTiers.frente
   const printCents = tierPrice(area, 250)
   const totalCents = tee ? tee.basePriceCents + printCents : 0
@@ -52,7 +52,7 @@ function EditorPreview() {
   )
 }
 
-export function PersonalizerTeaser() {
+export function PersonalizerTeaser({ catalog }: { catalog: Catalog }) {
   return (
     <Section aria-labelledby="personalizador-titulo" tone="teal" className="border-b-2 border-ink">
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
@@ -78,7 +78,7 @@ export function PersonalizerTeaser() {
             Abrir el personalizador
           </Link>
         </div>
-        <EditorPreview />
+        <EditorPreview catalog={catalog} />
       </div>
     </Section>
   )

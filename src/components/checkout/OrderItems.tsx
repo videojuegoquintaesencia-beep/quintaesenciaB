@@ -2,7 +2,7 @@ import { FileText } from 'lucide-react'
 import { site } from '@/config/site'
 import { LineThumb } from '@/components/cart/LineThumb'
 import { primaryPreviewId } from '@/components/cart/line-utils'
-import { formatEUR, unidades } from '@/lib/format'
+import { formatEUR, formatNumber, unidades } from '@/lib/format'
 import { isQuoteItem, orderItemTitle, quoteLineNote } from '@/lib/order-items'
 import type { Order, OrderItem } from '@/lib/orders'
 
@@ -55,7 +55,7 @@ export function OrderItems({ order }: { order: Order }) {
               </p>
               {it.discountCents > 0 && (
                 <p className="text-sm text-ink-soft">
-                  Descuento por cantidad ({it.discountPct}&nbsp;%): −{formatEUR(it.discountCents)}
+                  Descuento por cantidad ({formatNumber(it.discountPct)}&nbsp;%): −{formatEUR(it.discountCents)}
                 </p>
               )}
               {it.note && <p className="text-sm text-ink-soft">Tu nota: {it.note}</p>}
