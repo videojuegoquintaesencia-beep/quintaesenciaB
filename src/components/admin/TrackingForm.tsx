@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useId, useState } from 'react'
-import { Truck } from 'lucide-react'
+import { ExternalLink, Truck } from 'lucide-react'
+import { trackingUrlFor } from '@/lib/carriers'
 import { postJson } from '@/lib/admin/client'
 import { CarrierFields } from './CarrierFields'
 import { Feedback } from './Feedback'
@@ -31,6 +32,7 @@ export function TrackingForm({
   const [notify, setNotify] = useState(!trackingCode)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ kind: 'success' | 'warning' | 'error'; text: string } | null>(null)
+  const trackingUrl = trackingUrlFor(carrier, trackingCode)
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -60,10 +62,21 @@ export function TrackingForm({
   return (
     <Panel title={trackingCode ? 'Seguimiento del envío' : 'Añadir seguimiento'} id="seguimiento" icon={<Truck size={20} />}>
       {trackingCode ? (
-        <p className="mb-3">
-          <span className="text-ink-soft">{carrier || 'Mensajería'} · </span>
-          <strong className="break-all font-mono">{trackingCode}</strong>
-        </p>
+        <div className="mb-3">
+          <p>
+            <span className="text-ink-soft">{carrier || 'Mensajería'} · </span>
+            <strong className="break-all font-mono">{trackingCode}</strong>
+          </p>
+          {trackingUrl ? (
+            <a href={trackingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm mt-2">
+              <ExternalLink size={16} aria-hidden="true" />
+              Seguir el envío en {carrier}
+              <span className="sr-only"> (se abre en una pestaña nueva)</span>
+            </a>
+          ) : (
+            <p className="mt-1 text-sm text-ink-soft">Sin enlace de seguimiento: el transportista no está en la lista o no lo ofrece.</p>
+          )}
+        </div>
       ) : (
         <p className="mb-3 text-sm text-ink-soft">Este pedido se envió sin código de seguimiento. Añádelo cuando lo tengas.</p>
       )}

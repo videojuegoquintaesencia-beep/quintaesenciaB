@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { ExternalLink, Printer, TriangleAlert } from 'lucide-react'
+import { ExternalLink, FileText, Printer, TriangleAlert } from 'lucide-react'
 import { Feedback } from '@/components/admin/Feedback'
+import { InvoicePanel } from '@/components/admin/InvoicePanel'
 import { NoteForm } from '@/components/admin/NoteForm'
 import { OrderEvents } from '@/components/admin/OrderEvents'
 import { OrderItemCard } from '@/components/admin/OrderItemCard'
@@ -13,9 +14,11 @@ import { Panel } from '@/components/admin/Panel'
 import { OrderStatusBadge } from '@/components/admin/StatusBadges'
 import { TrackingForm } from '@/components/admin/TrackingForm'
 import { ButtonLink } from '@/components/ui/Button'
+import { invoiceUrl } from '@/lib/emails/order'
 import { getFileMetas, getPngSizes } from '@/lib/files'
 import { unidades } from '@/lib/format'
 import { isValidId } from '@/lib/ids'
+import { getInvoiceRecord } from '@/lib/invoices'
 import { ORDER_STATUS_TRANSITIONS } from '@/lib/order-status'
 import { orderFileIds } from '@/lib/orders'
 import { adminDateTime } from '@/lib/admin/dates'
@@ -36,10 +39,14 @@ export default async function OrderDetailPage({ params }: Props) {
   if (!order) notFound()
 
   const fileIds = orderFileIds(order)
-  const files = new Map((await getFileMetas(fileIds)).map((f) => [f.id, f]))
-  const pngSizes = await getPngSizes(order.items.flatMap((i) => Object.values(i.printFiles)))
+  const [files, pngSizes, invoice] = await Promise.all([
+    getFileMetas(fileIds).then((metas) => new Map(metas.map((f) => [f.id, f]))),
+    getPngSizes(order.items.flatMap((i) => Object.values(i.printFiles))),
+    getInvoiceRecord(order.id),
+  ])
   const units = order.items.reduce((n, i) => n + i.quantity, 0)
   const showTracking = order.status === 'shipped' || order.status === 'delivered'
+  const latestInvoice = invoice?.rectification ?? invoice?.invoice ?? null
 
   return (
     <>
@@ -59,6 +66,15 @@ export default async function OrderDetailPage({ params }: Props) {
               <Printer size={18} aria-hidden="true" />
               Hoja de producción
             </ButtonLink>
+            {latestInvoice && (
+              <ButtonLink
+                href={`/admin/pedidos/${order.id}/factura${latestInvoice.kind === 'rectification' ? '?doc=rectificativa' : ''}`}
+                variant="plain"
+              >
+                <FileText size={18} aria-hidden="true" />
+                {latestInvoice.kind === 'rectification' ? 'Rectificativa' : 'Factura'} {latestInvoice.number}
+              </ButtonLink>
+            )}
             <a
               href={`/pedido/${order.id}?t=${order.publicToken}`}
               target="_blank"
@@ -88,7 +104,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
       {/*
         Escritorio: artículos a la izquierda y gestión a la derecha. Móvil: una sola columna con el orden de trabajo
-        (estado, contacto, artículos, pago, nota, historial); `contents` deja los bloques como hijos directos de la rejilla.
+        (estado, contacto, artículos, pago, factura, nota, historial); `contents` deja los bloques como hijos directos de la rejilla.
       */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
         <div className="min-w-0 max-lg:contents lg:col-start-1 lg:row-start-1 lg:space-y-6">
@@ -100,7 +116,7 @@ export default async function OrderDetailPage({ params }: Props) {
               <OrderItemCard key={item.lineId} item={item} index={i} files={files} pngSizes={pngSizes} />
             ))}
           </section>
-          <div className="max-lg:order-7">
+          <div className="max-lg:order-8">
             <OrderEvents events={order.events} />
           </div>
         </div>
@@ -127,6 +143,17 @@ export default async function OrderDetailPage({ params }: Props) {
             <PaymentPanel order={order} />
           </div>
           <div className="max-lg:order-6">
+            <InvoicePanel
+              orderId={order.id}
+              status={order.status}
+              customerEmail={order.email}
+              customerUrl={invoice ? invoiceUrl(order, latestInvoice?.kind) : null}
+              invoice={invoice ? { number: invoice.invoice.number, issuedAt: invoice.invoice.issuedAt } : null}
+              rectification={invoice?.rectification ? { number: invoice.rectification.number, issuedAt: invoice.rectification.issuedAt } : null}
+              demo={order.payment.provider === 'demo'}
+            />
+          </div>
+          <div className="max-lg:order-7">
             <NoteForm endpoint={`/api/admin/orders/${order.id}/note`} field="note" initial={order.adminNote ?? ''} />
           </div>
         </div>
