@@ -55,7 +55,35 @@ npm run seed:demo            # crea 6 pedidos, 2 presupuestos y 1 mensaje de dem
 npm run seed:demo -- --force # los borra y los vuelve a crear
 ```
 
-Otros scripts: `npm run build`, `npm start`, `npm run lint`, `npm run typecheck`.
+Otros scripts: `npm run build`, `npm start`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run e2e` (ver [Pruebas](#pruebas)).
+
+## Pruebas
+
+Dos suites, las dos en CI:
+
+| Suite | Herramienta | Qué cubre | Comando |
+| --- | --- | --- | --- |
+| Unitarias e integración | [vitest](https://vitest.dev) | La lógica de negocio pura (precios y escalones, envíos, IVA, modelo del diseño, validaciones, SVG y PNG, límites de peticiones, PayPal, CSV, ajustes…) y la base de datos real en memoria (esquema y migraciones, pedidos, pagos, estados, ajustes, presupuestos, archivos, límite de accesos) | `npm test` (`npm run test:watch` en modo vigilancia) |
+| Extremo a extremo | [Playwright](https://playwright.dev) | Portada y navegación, catálogo y fichas, editor (precio en vivo, archivos generados), carrito, checkout con pago de demostración, seguimiento, panel (acceso, lista, detalle, estados, hoja de producción, CSV), formularios de empresas y contacto y accesibilidad básica; en escritorio (`chromium`, 1280 × 800) y móvil (`movil`, Pixel 7) | `npm run e2e` |
+
+### Unitarias e integración (vitest)
+
+- Archivos en `tests/unit/**` y `tests/integration/**` (también se recogen `src/**/*.test.ts`). Configuración en `vitest.config.ts`: alias `@` → `src`, entorno Node y el paquete `server-only` sustituido por un módulo vacío (`tests/stubs/server-only.ts`) para poder importar `lib/db`, `lib/orders`, etc.
+- Las de integración abren libSQL en memoria (`DATABASE_URL=file::memory:`): no tocan `data/` ni necesitan nada arrancado. La prueba de migraciones crea una base con el esquema antiguo en un directorio temporal.
+- Un archivo: `npx vitest run tests/unit/pricing.test.ts`. Un caso por nombre: `npx vitest run -t "Baleares"`.
+
+### Extremo a extremo (Playwright)
+
+- `npm run e2e` arranca `next dev` en el puerto **3107** con `NEXT_DIST_DIR=.next-e2e` y `DATABASE_URL=file:./data/e2e.db` (su propia base y su propia compilación: no interfiere con `npm run dev`). Si ya hay un servidor así escuchando en el 3107 lo reutiliza; en CI siempre arranca uno. Al empezar vacía esa base de datos; cada prueba crea después sus propios datos (pedidos por la API con pago de demostración, archivos subidos de verdad) y se presenta al servidor con una IP distinta (`X-Forwarded-For`) para que los límites por IP no acumulen entre pruebas. Las pruebas no dependen del orden.
+- Hace falta el navegador: `npx playwright install chromium` (en CI, `--with-deps`).
+- Un archivo o un proyecto: `npx playwright test tests/e2e/carrito.spec.ts --project=chromium`. Con el navegador visible: `npm run e2e:headed`. Modo interactivo: `npx playwright test --ui`.
+- **Depurar:** `npx playwright test --trace on` guarda una traza por prueba en `test-results/`; se abre con `npx playwright show-trace test-results/<carpeta-de-la-prueba>/trace.zip` y permite ver cada paso, el DOM, la red y la consola. Por defecto las trazas están desactivadas (pesan). Al fallar una prueba siempre se guarda una captura y un resumen (`error-context.md`) en `test-results/`.
+- Accesibilidad: se inyecta `node_modules/axe-core/axe.min.js` si existe (axe-core no es dependencia del proyecto); si no está, esas pruebas se omiten y lo dicen.
+- Defectos conocidos: una prueba marcada `test.fixme` (Playwright) o `it.todo('[fixme] …')` (vitest) documenta un defecto real pendiente de arreglar; el comentario junto a ella explica cuál.
+
+### Integración continua
+
+`.github/workflows/ci.yml` (Node 22, caché de npm): `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npx playwright install --with-deps chromium`, `npm run e2e` y `npm run build`. Si las pruebas de extremo a extremo fallan, el informe HTML y `test-results/` se suben como artefacto del flujo.
 
 ## Variables de entorno
 
