@@ -112,7 +112,10 @@ export function normalizeIp(raw: string): string | null {
 
 /** Nº de proxies de confianza delante de la app (variable TRUSTED_PROXY_HOPS; por defecto 1). */
 export function trustedProxyHops(): number {
-  return Math.max(0, Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? '1', 10) || 0)
+  // Definida pero vacía cuenta como ausente (1 salto), igual que anuncia el aviso de arranque de producción.
+  const raw = (process.env.TRUSTED_PROXY_HOPS ?? '').trim()
+  if (raw === '') return 1
+  return Math.max(0, Number.parseInt(raw, 10) || 0)
 }
 
 /**

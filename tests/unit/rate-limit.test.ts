@@ -114,12 +114,12 @@ describe('clientIp y TRUSTED_PROXY_HOPS', () => {
     expect(clientIp(request({ 'x-forwarded-for': xff }))).toBe('203.0.113.5')
   })
 
-  // DEFECTO (menor): con `TRUSTED_PROXY_HOPS=` vacío, `trustedProxyHops()` devuelve 0 (parseInt('') → NaN → 0), pero el
-  // aviso de arranque de `productionConfigIssues` dice "no está definido (se asume 1)". Vacío y ausente deberían
-  // comportarse igual (o el aviso decir la verdad). Queda como `todo` (el "fixme" de vitest) hasta que se decida cuál cambia.
-  it.todo('[fixme] una variable definida pero vacía se trata como ausente (1 salto), como anuncia el aviso de arranque', () => {
-    vi.stubEnv('TRUSTED_PROXY_HOPS', '')
+  // Vacía y ausente se comportan igual: es lo que anuncia el aviso de arranque de `productionConfigIssues`
+  // ("no está definido (se asume 1)"); antes parseInt('') → NaN → 0 y todas las visitas compartían un contador.
+  it('una variable definida pero vacía se trata como ausente (1 salto), como anuncia el aviso de arranque', () => {
+    vi.stubEnv('TRUSTED_PROXY_HOPS', '  ')
     expect(trustedProxyHops()).toBe(1)
+    expect(clientIp(request({ 'x-forwarded-for': xff }))).toBe('203.0.113.5')
   })
 
   it('con 2 saltos toma la penúltima (la que añadió el primer proxy propio)', () => {

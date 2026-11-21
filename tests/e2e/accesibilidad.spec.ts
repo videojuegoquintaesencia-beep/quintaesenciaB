@@ -34,27 +34,12 @@ test.describe('accesibilidad básica (axe)', () => {
     await expect(page.getByLabel('Contenido')).toHaveValue('Tu texto')
   }
 
-  /**
-   * DEFECTO conocido (src/components/editor/panels/TextPanel.tsx, grupo "Contorno"): cuando el grosor es 0, el bloque
-   * de colores del contorno se marca con aria-hidden="true" pero sus botones de color siguen siendo enfocables con el
-   * teclado (axe: `aria-hidden-focus`, grave). Habría que quitarlo del orden de tabulación (p. ej. `inert` o
-   * deshabilitar los botones) en lugar de ocultarlo solo a los lectores de pantalla.
-   */
-  const KNOWN_EDITOR_GAPS = [{ id: 'aria-hidden-focus', node: '.opacity-40' }]
-
-  test.fixme('editor con un texto añadido (sin excepciones)', async ({ page }) => {
+  // El grupo "Contorno" del panel Texto se desactiva con `inert` cuando el grosor es 0: antes iba con aria-hidden y sus
+  // botones seguían siendo enfocables (axe `aria-hidden-focus`). Esta prueba vigila que no vuelva a pasar.
+  test('editor con un texto añadido', async ({ page }) => {
     test.setTimeout(180_000)
     await openEditorWithText(page)
     await expectNoSeriousViolations(page)
-  })
-
-  test('editor con un texto añadido (salvo el defecto conocido del contorno)', async ({ page }) => {
-    test.setTimeout(180_000)
-    await openEditorWithText(page)
-    const violations = (await seriousViolations(page)).filter(
-      (v) => !KNOWN_EDITOR_GAPS.some((gap) => gap.id === v.id && v.nodes.every((n) => n === gap.node)),
-    )
-    expect(violations, `Violaciones graves o críticas:\n${describeViolations(violations)}`).toEqual([])
   })
 
   test('carrito con una línea', async ({ page }) => {

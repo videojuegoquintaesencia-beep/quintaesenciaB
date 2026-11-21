@@ -171,7 +171,8 @@ function TextEditor({ layer }: { layer: TextLayer }) {
           onChange={(e) => patch({ strokeCm: Number(e.target.value) }, `stroke-${layer.id}`)}
           className="mb-3 h-11 w-full accent-pink"
         />
-        <div className={cn(outline === 0 && 'pointer-events-none opacity-40')} aria-hidden={outline === 0}>
+        {/* Sin contorno, el color no aplica: `inert` lo saca del orden de tabulación y del árbol de accesibilidad a la vez. */}
+        <div className={cn(outline === 0 && 'pointer-events-none opacity-40')} inert={outline === 0 || undefined}>
           <ColorSwatches
             label="Color del contorno"
             value={layer.strokeColor ?? '#1b1340'}
