@@ -15,9 +15,43 @@ equipos y eventos**.
 | Web pública | `/`, `/productos`, `/productos/[slug]`, `/como-funciona`, `/preguntas-frecuentes` | Ilustraciones SVG propias de cada producto, SEO y datos estructurados |
 | Personalizador | `/personalizar`, `/personalizar/[producto]` | Editor Konva: plantillas por ocasión, imágenes, texto (9 fuentes), 20 pegatinas, capas, deshacer/rehacer, precio en vivo, archivo de impresión PNG transparente a 300 dpi |
 | Compra | `/carrito`, `/checkout`, `/pedido/[id]`, `/seguimiento` | Precio recalculado siempre en el servidor, envío, IVA, PayPal, seguimiento por enlace con token |
-| Empresas | `/empresas`, `/contacto` | Formulario de presupuesto con adjuntos y formulario de contacto |
+| Empresas | `/empresas`, `/contacto`, `/presupuesto/[id]` | Formulario de presupuesto con adjuntos, formulario de contacto y página de la propuesta de precio (aceptación y pago online, enlace con token) |
 | Legal | `/legal/aviso-legal`, `/legal/privacidad`, `/legal/cookies`, `/legal/condiciones` | Plantillas generales. **Deben revisarlas un profesional** |
-| Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, presupuestos y mensajes |
+| Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, presupuestos y mensajes, propuesta de precio por presupuesto |
+
+### Presupuestos con propuesta de precio y pago online
+
+El formulario de `/empresas` crea una solicitud (`PR-1001`) que la dueña gestiona en `/admin/presupuestos/[id]`.
+Desde ahí cierra el ciclo sin salir de la web:
+
+1. **Propuesta.** En el panel «Propuesta de precio» compone las líneas (producto del catálogo o texto libre,
+   descripción, unidades —en total o desglosadas por tallas— y precio unitario en euros con IVA), el coste de envío
+   (0 si va incluido), la validez en días (15 por defecto) y un mensaje para el cliente. «Guardar borrador» no avisa a
+   nadie; «Enviar al cliente» fija la fecha límite, genera el enlace público y manda el email
+   (`src/lib/emails/quote.ts`, `sendQuoteProposal`). Mientras el cliente no acepte, se puede editar y «Reenviar»
+   (renueva la validez; el enlace no cambia; si solo se guardan los cambios, el enlace ya muestra la versión nueva sin
+   avisar por email). La validez termina al final del último día en hora peninsular. El estado del presupuesto pasa a
+   «Presupuesto enviado».
+2. **Aceptación.** El cliente abre `/presupuesto/[id]?t=<token>` (sin indexar, sin `Referer`, 404 con token malo),
+   ve las líneas, los totales con el IVA incluido y la validez, y rellena los mismos datos y consentimientos que el
+   checkout (se reutilizan `CheckoutForm`, `form-state.ts` y `PaymentSection`). Si la propuesta caducó, no hay botón
+   de pago y puede «pedir una actualización» por email. `POST /api/quotes/[id]/accept` crea el pedido pendiente de
+   pago **con los importes de la propuesta guardada** (nunca del navegador): líneas `kind: "quote"` con descripción y
+   precio unitario, sin diseño ni archivos, y `orders.quote_id` apuntando al presupuesto. Es idempotente: una segunda
+   aceptación devuelve el mismo pedido, y al volver al enlace con un pedido sin pagar se va directo al pago. Desde ese
+   momento la propuesta es inmutable (el panel la muestra en solo lectura); solo si ese pedido se cancela se puede
+   retocar y volver a aceptar.
+3. **Pago.** La misma mecánica que el checkout (pago demo o PayPal, cuyo pedido se crea en el endpoint de aceptación).
+   Al cobrarse (demo, captura o webhook de PayPal, o marcado a mano como pagado) el presupuesto pasa a «Ganado» y
+   salen los emails de pedido habituales.
+4. **Panel.** El pedido muestra «Procede del presupuesto PR-xxxx» con enlace; sus líneas enseñan la descripción, las
+   unidades, el precio acordado y los adjuntos del presupuesto (también en la hoja de producción y en el CSV, como
+   «(presupuesto)»). El presupuesto enlaza su «Pedido PU-xxxx» con el estado del pago, y la lista marca «Propuesta
+   enviada» o «Propuesta aceptada».
+
+Modelo y validación en `src/lib/proposal.ts` (zod, céntimos enteros, totales calculados en servidor); lógica de
+aceptación en `src/lib/quote-accept.ts`; API del panel en `POST /api/admin/quotes/[id]/proposal`
+(`{ action: "save" | "send", proposal }`).
 
 ### Reglas de negocio (están en `src/config/`)
 

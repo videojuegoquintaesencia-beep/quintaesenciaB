@@ -127,6 +127,16 @@ const addressOf = (v: FormValues) => ({
   country: 'ES' as const,
 })
 
+/** Datos del cliente, dirección, nota y consentimientos (lo comparten el checkout y la aceptación de presupuestos). */
+export function buildCustomerPayload(v: FormValues) {
+  return {
+    customer: contactOf(v),
+    shipping: addressOf(v),
+    note: v.note,
+    consents: { terms: v.terms, privacy: v.privacy, noWithdrawal: v.noWithdrawal, artworkRights: v.artworkRights },
+  }
+}
+
 /** Cuerpo de POST /api/checkout. Solo intenciones: el servidor recalcula todos los importes. */
 export function buildPayload(v: FormValues, lines: CartLine[]) {
   return {
@@ -140,10 +150,7 @@ export function buildPayload(v: FormValues, lines: CartLine[]) {
       printFiles: l.printFiles,
       note: l.note,
     })),
-    customer: contactOf(v),
-    shipping: addressOf(v),
-    note: v.note,
-    consents: { terms: v.terms, privacy: v.privacy, noWithdrawal: v.noWithdrawal, artworkRights: v.artworkRights },
+    ...buildCustomerPayload(v),
   }
 }
 

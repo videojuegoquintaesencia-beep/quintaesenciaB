@@ -1,8 +1,9 @@
 import { site } from '@/config/site'
+import { isQuoteItem, orderItemTitle, quoteLineNote } from '@/lib/order-items'
 import type { Order, OrderItem } from '@/lib/orders'
 import { adminDate, adminDateTime } from '@/lib/admin/dates'
-import { buildItemView, formatSizeCm } from '@/lib/admin/order-view'
-import { unidades } from '@/lib/format'
+import { buildItemView, formatSizeCm, hasSizeBreakdown, type QuoteSource } from '@/lib/admin/order-view'
+import { formatEUR, unidades } from '@/lib/format'
 import { FileImage } from './Thumb'
 import { SizeMatrix } from './SizeMatrix'
 
@@ -22,6 +23,75 @@ function Steps({ lineId }: { lineId: string }) {
         ))}
       </div>
     </fieldset>
+  )
+}
+
+/** Línea de un presupuesto aceptado: descripción, unidades (con tallas si las hay) y los adjuntos del presupuesto. */
+function QuoteItemSection({ item, index, quote }: { item: OrderItem; index: number; quote: QuoteSource | undefined }) {
+  const view = buildItemView(item)
+  const images = quote?.files.filter((f) => f.mime.startsWith('image/') && f.mime !== 'image/svg+xml') ?? []
+  const others = quote?.files.filter((f) => !images.includes(f)) ?? []
+  return (
+    <section aria-labelledby={`hoja-${item.lineId}`} className="break-inside-avoid rounded-lg border-[3px] border-black">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b-[3px] border-black bg-neutral-100 px-4 py-2.5 print:bg-white">
+        <h2 id={`hoja-${item.lineId}`} className="text-2xl font-bold [overflow-wrap:anywhere]">
+          {index + 1}. {orderItemTitle(item)}
+        </h2>
+        <p className="text-xl font-bold">{unidades(item.quantity)}</p>
+      </header>
+      <div className="space-y-4 p-4">
+        <p className="text-lg">
+          <strong>{quoteLineNote(quote?.number ?? null)}</strong>
+          {item.productId !== 'otro' && <> · {item.productName}</>} · {formatEUR(item.unitCents ?? item.unitBaseCents)} por unidad
+        </p>
+        {hasSizeBreakdown(item) ? (
+          <div className="overflow-x-auto">
+            <SizeMatrix rows={view.sizeRows} large />
+          </div>
+        ) : (
+          <p className="text-lg">Sin desglose por tallas.</p>
+        )}
+        {item.note && (
+          <p className="rounded-lg border-2 border-dashed border-black p-3 text-lg">
+            <strong>Nota del cliente: </strong>
+            {item.note}
+          </p>
+        )}
+        {quote && quote.files.length > 0 ? (
+          <div>
+            <p className="text-sm font-extrabold uppercase tracking-wide">Archivos del presupuesto</p>
+            {images.length > 0 && (
+              <ul className="mt-2 flex flex-wrap gap-4">
+                {images.map((f) => (
+                  <li key={f.id} className="w-[45mm]">
+                    <FileImage
+                      fileId={f.id}
+                      alt={`Adjunto del presupuesto: ${f.name ?? 'archivo sin nombre'}`}
+                      width={180}
+                      height={180}
+                      checker
+                      eager
+                      className="max-h-[45mm] rounded border-2 border-black"
+                    />
+                    <p className="mt-0.5 truncate text-center text-xs font-bold">{f.name ?? 'Archivo sin nombre'}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {others.length > 0 && (
+              <ul className="mt-2 list-disc pl-5 text-sm">
+                {others.map((f) => (
+                  <li key={f.id}>{f.name ?? `Archivo ${f.id.slice(0, 8)}`} (descárgalo desde el presupuesto)</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm">El presupuesto no tiene archivos adjuntos: el diseño se acordó por email.</p>
+        )}
+        <Steps lineId={item.lineId} />
+      </div>
+    </section>
   )
 }
 
@@ -122,7 +192,7 @@ function ItemSection({ item, index }: { item: OrderItem; index: number }) {
 }
 
 /** Hoja A4 de producción: legible en blanco y negro, con el pedido, las tallas, cada estampado y la etiqueta de envío. */
-export function ProductionSheet({ order }: { order: Order }) {
+export function ProductionSheet({ order, quote }: { order: Order; quote?: QuoteSource }) {
   const units = order.items.reduce((n, i) => n + i.quantity, 0)
   const s = order.shipping
   return (
@@ -150,6 +220,13 @@ export function ProductionSheet({ order }: { order: Order }) {
         {order.company && <> · {order.company}</>} · Tel. {order.phone}
       </p>
 
+      {order.quoteId && (
+        <p className="rounded-lg border-[3px] border-black p-3 text-lg">
+          <strong className="uppercase">Procede del presupuesto {order.quoteNumber ?? ''}: </strong>
+          lo que se fabrica es lo acordado en la propuesta; los archivos del cliente están en el presupuesto.
+        </p>
+      )}
+
       {order.customerNote && (
         <p className="rounded-lg border-[3px] border-black p-3 text-lg">
           <strong className="uppercase">Nota del cliente: </strong>
@@ -157,9 +234,13 @@ export function ProductionSheet({ order }: { order: Order }) {
         </p>
       )}
 
-      {order.items.map((item, i) => (
-        <ItemSection key={item.lineId} item={item} index={i} />
-      ))}
+      {order.items.map((item, i) =>
+        isQuoteItem(item) ? (
+          <QuoteItemSection key={item.lineId} item={item} index={i} quote={quote} />
+        ) : (
+          <ItemSection key={item.lineId} item={item} index={i} />
+        ),
+      )}
 
       <section
         aria-label="Etiqueta de envío"

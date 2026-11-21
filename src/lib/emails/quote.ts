@@ -5,7 +5,9 @@
 import 'server-only'
 import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, sendMail, type MailResult } from '../email'
+import { formatEUR } from '../format'
 import { ENTITY_WORD } from './names'
+import { formatValidUntil, proposalLineDetail, type Proposal } from '../proposal'
 import { QUOTE_PRODUCT_LABELS, type QuoteProduct } from '../quote-form'
 import type { Quote } from '../quotes'
 
@@ -103,6 +105,89 @@ export async function sendQuoteReceived(quote: Quote): Promise<MailResult> {
       '',
       `${site.name} · ${site.contact.email}`,
     ].join('\n'),
+    replyTo: site.contact.email || undefined,
+  })
+}
+
+/* ───────────── Propuesta de precio ───────────── */
+
+/** Ruta pública de la propuesta (incluye el token secreto). */
+export function proposalPagePath(quote: Pick<Quote, 'id' | 'publicToken'>): string {
+  return `/presupuesto/${quote.id}?t=${quote.publicToken ?? ''}`
+}
+
+function proposalLinesHtml(proposal: Proposal): string {
+  const rows = proposal.lines
+    .map(
+      (line) => `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid ${LINE};vertical-align:top"><strong>${esc(line.description)}</strong><br>
+          <span style="font-size:14px;color:${MUTED}">${esc(proposalLineDetail(line))}</span></td>
+        <td style="padding:10px 0 10px 12px;border-bottom:1px solid ${LINE};text-align:right;white-space:nowrap;vertical-align:top;font-weight:700">${esc(formatEUR(line.totalCents))}</td>
+      </tr>`,
+    )
+    .join('')
+  const total = (label: string, value: string, strong = false) =>
+    `<tr><td style="padding:4px 0;${strong ? 'font-weight:800;font-size:17px;' : `color:${MUTED};`}">${esc(label)}</td><td style="padding:4px 0;text-align:right;${strong ? 'font-weight:800;font-size:17px;' : ''}">${esc(value)}</td></tr>`
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 0">${rows}</table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0">
+      ${total('Subtotal', formatEUR(proposal.subtotalCents))}
+      ${total('Envío', proposal.shippingCents === 0 ? 'Incluido' : formatEUR(proposal.shippingCents))}
+      ${total('Total', formatEUR(proposal.totalCents), true)}
+      ${total(`IVA incluido (${Math.round(site.vatRate * 100)} %)`, formatEUR(proposal.vatCents))}
+    </table>`
+}
+
+function proposalLinesText(proposal: Proposal): string {
+  return [
+    ...proposal.lines.map((line) => `- ${line.description} · ${proposalLineDetail(line)} · ${formatEUR(line.totalCents)}`),
+    '',
+    `Subtotal: ${formatEUR(proposal.subtotalCents)}`,
+    `Envío: ${proposal.shippingCents === 0 ? 'Incluido' : formatEUR(proposal.shippingCents)}`,
+    `Total: ${formatEUR(proposal.totalCents)} (IVA incluido: ${formatEUR(proposal.vatCents)})`,
+  ].join('\n')
+}
+
+/**
+ * Propuesta de precio para el cliente, con el enlace para verla, aceptarla y pagarla. Requiere que el presupuesto
+ * tenga propuesta enviada y token público (los fija `markQuoteProposalSent`).
+ */
+export async function sendQuoteProposal(quote: Quote): Promise<MailResult> {
+  const proposal = quote.proposal
+  if (!proposal || !quote.publicToken) return { ok: false, error: 'El presupuesto no tiene propuesta enviada' }
+  const url = absoluteUrl(proposalPagePath(quote))
+  const until = proposal.validUntil ? formatValidUntil(proposal.validUntil) : ''
+  const validity = until ? `Puedes aceptarla hasta el ${until}.` : ''
+  const message = proposal.message.trim()
+
+  return sendMail({
+    to: quote.email,
+    subject: `Tu presupuesto ${quote.number} — ${site.name}`,
+    html: await emailShell({
+      title: `Tu presupuesto ${quote.number}`,
+      preheader: `Propuesta de ${formatEUR(proposal.totalCents)}, IVA incluido. ${validity}`.trim(),
+      bodyHtml: `<p style="margin:0 0 12px">${esc(greeting(quote))}, ya tenemos lista la propuesta para tu solicitud <strong>${esc(quote.number)}</strong>.</p>
+        ${message ? `<p style="margin:0 0 14px;background:#fff8ec;border-left:4px solid #ffc93c;border-radius:8px;padding:12px 14px;white-space:pre-wrap">${esc(message)}</p>` : ''}
+        ${proposalLinesHtml(proposal)}
+        <p style="margin:18px 0 0">${esc(validity)} Para aceptarla, abre el enlace, revisa los datos de envío y paga de forma segura. En cuanto recibamos el pago nos ponemos con tu pedido.</p>
+        <p style="margin:12px 0 0;font-size:14px;color:${MUTED}">Si quieres cambiar algo, responde a este email y ajustamos la propuesta.</p>`,
+      ctaLabel: 'Ver y aceptar la propuesta',
+      ctaUrl: url,
+    }),
+    text: [
+      `${greeting(quote)}, ya tenemos lista la propuesta para tu solicitud ${quote.number}.`,
+      message ? `\n${message}\n` : '',
+      proposalLinesText(proposal),
+      '',
+      `${validity} Para aceptarla, abre el enlace, revisa los datos de envío y paga de forma segura. En cuanto recibamos el pago nos ponemos con tu pedido.`,
+      '',
+      `Ver y aceptar la propuesta: ${url}`,
+      '',
+      'Si quieres cambiar algo, responde a este email y ajustamos la propuesta.',
+      '',
+      `${site.name} · ${site.contact.email}`,
+    ]
+      .filter((l) => l !== '')
+      .join('\n'),
     replyTo: site.contact.email || undefined,
   })
 }

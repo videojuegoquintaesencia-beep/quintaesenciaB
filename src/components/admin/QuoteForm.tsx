@@ -26,6 +26,14 @@ export function QuoteForm({
   const [saved, setSaved] = useState({ status, note: adminNote ?? '' })
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
+  // El estado puede cambiar desde fuera de este formulario (enviar la propuesta lo pasa a "Presupuesto enviado"
+  // y el pago del pedido a "Ganado"): cuando llega un valor nuevo del servidor, el desplegable lo adopta.
+  const [knownStatus, setKnownStatus] = useState(status)
+  if (status !== knownStatus) {
+    setKnownStatus(status)
+    if (statusValue === saved.status) setStatusValue(status)
+    setSaved((s) => ({ ...s, status }))
+  }
   const dirty = statusValue !== saved.status || note !== saved.note
   // Si un mensaje antiguo tiene un estado de presupuesto, se sigue mostrando para que el desplegable no mienta.
   const options = statusesForKind(kind).includes(status) ? statusesForKind(kind) : [...statusesForKind(kind), status]

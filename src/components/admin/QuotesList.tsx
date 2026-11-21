@@ -1,8 +1,20 @@
 import Link from 'next/link'
-import { Building2, Inbox, MessageSquare } from 'lucide-react'
+import { Building2, CircleCheck, Inbox, MessageSquare, Send } from 'lucide-react'
 import type { Quote } from '@/lib/quotes'
 import { adminShortDateTime, timeAgo } from '@/lib/admin/dates'
 import { QuoteStatusBadge } from './StatusBadges'
+
+/** Indicador de la propuesta de precio: enviada al cliente o ya aceptada (con pedido). */
+function ProposalChip({ quote }: { quote: Quote }) {
+  if (quote.kind !== 'quote' || !quote.proposalSentAt) return null
+  const accepted = !!quote.orderId
+  return (
+    <span className={accepted ? 'chip bg-success-soft text-xs' : 'chip bg-sky-soft text-xs'}>
+      {accepted ? <CircleCheck size={14} aria-hidden="true" /> : <Send size={14} aria-hidden="true" />}
+      {accepted ? 'Propuesta aceptada' : 'Propuesta enviada'}
+    </span>
+  )
+}
 
 /** Lista compacta de presupuestos y mensajes (la misma en el resumen y en /admin/presupuestos). */
 export function QuotesList({ quotes, label }: { quotes: Quote[]; label: string }) {
@@ -26,7 +38,10 @@ export function QuotesList({ quotes, label }: { quotes: Quote[]; label: string }
                   {q.number}
                   <span className="sr-only">{q.kind === 'quote' ? ' (presupuesto)' : ' (mensaje)'}</span>
                 </span>
-                <QuoteStatusBadge status={q.status} />
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <ProposalChip quote={q} />
+                  <QuoteStatusBadge status={q.status} />
+                </span>
               </span>
               <span className="mt-0.5 block truncate font-bold">{q.name}</span>
               {q.company && (

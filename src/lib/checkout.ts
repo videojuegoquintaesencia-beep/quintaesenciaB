@@ -36,7 +36,8 @@ const cartLineSchema = z.object({
   note: z.string().trim().max(300).optional(),
 })
 
-const consentsSchema = z.object({
+/** Consentimientos obligatorios antes de pagar (los comparte la aceptación de propuestas de presupuesto). */
+export const consentsSchema = z.object({
   terms: z.literal(true, { error: 'Debes aceptar las condiciones de venta' }),
   privacy: z.literal(true, { error: 'Debes confirmar que has leído la política de privacidad' }),
   noWithdrawal: z.literal(true, { error: 'Debes confirmar que has leído la información sobre el desistimiento' }),

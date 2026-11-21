@@ -1,7 +1,9 @@
+import { FileText } from 'lucide-react'
 import { site } from '@/config/site'
 import { LineThumb } from '@/components/cart/LineThumb'
 import { primaryPreviewId } from '@/components/cart/line-utils'
 import { formatEUR, unidades } from '@/lib/format'
+import { isQuoteItem, orderItemTitle, quoteLineNote } from '@/lib/order-items'
 import type { Order, OrderItem } from '@/lib/orders'
 
 function sizesLabel(item: OrderItem): string {
@@ -18,19 +20,39 @@ export function OrderItems({ order }: { order: Order }) {
       <ul className="divide-y-2 divide-ink/15">
         {order.items.map((it) => (
           <li key={it.lineId} className="flex gap-4 py-4 first:pt-0">
-            <LineThumb
-              fileId={primaryPreviewId(it)}
-              alt={`Tu diseño: ${it.productName} ${it.colorName}`}
-              size={160}
-              className="h-20 w-20"
-            />
+            {isQuoteItem(it) ? (
+              // Las líneas de un presupuesto no tienen diseño del personalizador: no hay vista previa que enseñar.
+              <span
+                aria-hidden="true"
+                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-ink bg-yellow-soft"
+              >
+                <FileText size={28} />
+              </span>
+            ) : (
+              <LineThumb
+                fileId={primaryPreviewId(it)}
+                alt={`Tu diseño: ${it.productName} ${it.colorName}`}
+                size={160}
+                className="h-20 w-20"
+              />
+            )}
             <div className="min-w-0 flex-1">
-              <p className="font-extrabold">{it.productName}</p>
-              <p className="flex items-center gap-2 text-sm text-ink-soft">
-                <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-full border-2 border-ink" style={{ background: it.colorHex }} />
-                {it.colorName}
+              <p className="font-extrabold [overflow-wrap:anywhere]">{orderItemTitle(it)}</p>
+              {isQuoteItem(it) ? (
+                <p className="text-sm text-ink-soft">
+                  {quoteLineNote(order.quoteNumber)}
+                  {it.productId !== 'otro' && ` · ${it.productName}`}
+                </p>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-ink-soft">
+                  <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-full border-2 border-ink" style={{ background: it.colorHex }} />
+                  {it.colorName}
+                </p>
+              )}
+              <p className="mt-1 text-sm">
+                {sizesLabel(it)}
+                {isQuoteItem(it) && it.unitCents !== undefined && ` · ${formatEUR(it.unitCents)} por unidad`}
               </p>
-              <p className="mt-1 text-sm">{sizesLabel(it)}</p>
               {it.discountCents > 0 && (
                 <p className="text-sm text-ink-soft">
                   Descuento por cantidad ({it.discountPct}&nbsp;%): −{formatEUR(it.discountCents)}

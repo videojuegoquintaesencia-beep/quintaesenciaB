@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { ExternalLink, Printer, TriangleAlert } from 'lucide-react'
+import { ExternalLink, Inbox, Printer, TriangleAlert } from 'lucide-react'
 import { Feedback } from '@/components/admin/Feedback'
 import { NoteForm } from '@/components/admin/NoteForm'
 import { OrderEvents } from '@/components/admin/OrderEvents'
@@ -19,7 +19,7 @@ import { isValidId } from '@/lib/ids'
 import { ORDER_STATUS_TRANSITIONS } from '@/lib/order-status'
 import { orderFileIds } from '@/lib/orders'
 import { adminDateTime } from '@/lib/admin/dates'
-import { loadOrder } from '@/lib/admin/queries'
+import { loadOrder, loadOrderQuoteSource } from '@/lib/admin/queries'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -36,8 +36,12 @@ export default async function OrderDetailPage({ params }: Props) {
   if (!order) notFound()
 
   const fileIds = orderFileIds(order)
-  const files = new Map((await getFileMetas(fileIds)).map((f) => [f.id, f]))
-  const pngSizes = await getPngSizes(order.items.flatMap((i) => Object.values(i.printFiles)))
+  const [metas, pngSizes, quote] = await Promise.all([
+    getFileMetas(fileIds),
+    getPngSizes(order.items.flatMap((i) => Object.values(i.printFiles))),
+    loadOrderQuoteSource(order),
+  ])
+  const files = new Map(metas.map((f) => [f.id, f]))
   const units = order.items.reduce((n, i) => n + i.quantity, 0)
   const showTracking = order.status === 'shipped' || order.status === 'delivered'
 
@@ -80,6 +84,24 @@ export default async function OrderDetailPage({ params }: Props) {
         </Feedback>
       )}
 
+      {order.quoteId && (
+        <Panel title={`Procede del presupuesto ${quote?.number ?? order.quoteNumber ?? ''}`} tone="violet" icon={<Inbox size={20} />} className="mb-6" id="origen">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-2xl">
+              El cliente aceptó la propuesta de precio y creó este pedido desde su enlace. Lo que se fabrica es lo acordado en la
+              propuesta; los archivos que adjuntó están en el presupuesto, no en el pedido.
+            </p>
+            {quote ? (
+              <ButtonLink href={`/admin/presupuestos/${quote.id}`} variant="secondary" size="sm">
+                Ver presupuesto {quote.number}
+              </ButtonLink>
+            ) : (
+              <p className="text-sm font-bold text-ink-soft">El presupuesto ya no existe.</p>
+            )}
+          </div>
+        </Panel>
+      )}
+
       {order.customerNote && (
         <Panel title="Nota del cliente al pedido" tone="yellow" icon={<TriangleAlert size={20} />} className="mb-6">
           <p className="whitespace-pre-wrap break-words">{order.customerNote}</p>
@@ -97,7 +119,7 @@ export default async function OrderDetailPage({ params }: Props) {
               Artículos <span className="font-body text-lg text-ink-soft">({order.items.length})</span>
             </h2>
             {order.items.map((item, i) => (
-              <OrderItemCard key={item.lineId} item={item} index={i} files={files} pngSizes={pngSizes} />
+              <OrderItemCard key={item.lineId} item={item} index={i} files={files} pngSizes={pngSizes} quote={quote} />
             ))}
           </section>
           <div className="max-lg:order-7">

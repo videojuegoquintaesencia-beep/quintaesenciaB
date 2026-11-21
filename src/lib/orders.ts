@@ -17,19 +17,28 @@ import {
   isOrderStatus,
   type OrderStatus,
 } from './order-status'
+import { formatQuoteNumber, markQuoteWon } from './quotes'
 import type { Address, Customer } from './validators'
 
 /* ───────────── Tipos ───────────── */
 
-/** Línea de pedido tal y como queda guardada (instantánea con precios ya calculados). */
+/**
+ * Línea de pedido tal y como queda guardada (instantánea con precios ya calculados).
+ * Hay dos clases: las del personalizador (`kind` ausente o "design": diseño, previews y PNG de impresión) y las de
+ * un presupuesto aceptado (`kind` "quote": descripción y precio unitario fijados por la dueña, sin diseño ni archivos;
+ * los adjuntos están en el presupuesto, `Order.quoteId`).
+ */
 export interface OrderItem {
   lineId: string
-  productId: ProductId
+  /** Origen de la línea; ausente = "design". */
+  kind?: 'design' | 'quote'
+  /** Producto del catálogo; "otro" solo en líneas de presupuesto de texto libre. */
+  productId: ProductId | 'otro'
   productName: string
   colorId: string
   colorName: string
   colorHex: string
-  /** Unidades por talla (clave = id de talla; "unica" en productos de talla única). */
+  /** Unidades por talla (clave = id de talla; "unica" en productos de talla única o sin desglose). */
   sizes: Record<string, number>
   quantity: number
   unitBaseCents: number
@@ -40,12 +49,17 @@ export interface OrderItem {
   discountPct: number
   discountCents: number
   totalCents: number
-  design: Design
+  /** Diseño del cliente. En líneas de presupuesto: diseño vacío si el producto es del catálogo, ausente si es "otro". */
+  design?: Design
   /** Imagen de la vista del producto con el diseño aplicado (viewId → fileId). */
   previews: Record<string, string>
   /** PNG transparente listo para imprimir por cada zona usada (areaId → fileId). */
   printFiles: Record<string, string>
   note?: string
+  /** Solo líneas de presupuesto: texto de la línea tal y como lo escribió la dueña. */
+  description?: string
+  /** Solo líneas de presupuesto: precio por unidad acordado (IVA incluido). */
+  unitCents?: number
 }
 
 export type PaymentProvider = 'paypal' | 'demo'
@@ -91,6 +105,10 @@ export interface Order {
   carrier: string | null
   customerNote: string | null
   adminNote: string | null
+  /** Presupuesto del que procede el pedido (aceptación de una propuesta), si es el caso. */
+  quoteId: string | null
+  /** Número visible de ese presupuesto ("PR-1001"); null si no procede de uno o ya no existe. */
+  quoteNumber: string | null
   createdAt: string
   updatedAt: string
   events: OrderEvent[]
@@ -126,7 +144,7 @@ export function parseOrderNumber(value: string): number | null {
 
 type Row = Record<string, unknown>
 
-function mapOrder(r: Row, events: OrderEvent[]): Order {
+function mapOrder(r: Row, events: OrderEvent[], quoteNumber: string | null): Order {
   return {
     id: String(r.id),
     seq: Number(r.seq),
@@ -155,6 +173,8 @@ function mapOrder(r: Row, events: OrderEvent[]): Order {
     carrier: r.carrier == null ? null : String(r.carrier),
     customerNote: r.customer_note == null ? null : String(r.customer_note),
     adminNote: r.admin_note == null ? null : String(r.admin_note),
+    quoteId: r.quote_id == null ? null : String(r.quote_id),
+    quoteNumber,
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
     events,
@@ -180,12 +200,24 @@ async function loadEvents(orderId: string): Promise<OrderEvent[]> {
   return res.rows.map((r) => mapEvent(r as unknown as Row))
 }
 
+/** Número visible del presupuesto del que procede un pedido (null si no existe). */
+async function loadQuoteNumber(quoteId: string): Promise<string | null> {
+  const db = await getDb()
+  const res = await db.execute({ sql: `SELECT seq FROM quotes WHERE id = ? AND kind = 'quote'`, args: [quoteId] })
+  const row = res.rows[0]
+  return row ? formatQuoteNumber('quote', Number(row.seq)) : null
+}
+
 async function loadOne(where: string, args: (string | number)[]): Promise<Order | null> {
   const db = await getDb()
   const res = await db.execute({ sql: `SELECT * FROM orders WHERE ${where} LIMIT 1`, args })
   const row = res.rows[0] as unknown as Row | undefined
   if (!row) return null
-  return mapOrder(row, await loadEvents(String(row.id)))
+  const [events, quoteNumber] = await Promise.all([
+    loadEvents(String(row.id)),
+    row.quote_id == null ? null : loadQuoteNumber(String(row.quote_id)),
+  ])
+  return mapOrder(row, events, quoteNumber)
 }
 
 function itemFileIds(items: OrderItem[]): string[] {
@@ -193,7 +225,7 @@ function itemFileIds(items: OrderItem[]): string[] {
   for (const it of items) {
     for (const id of Object.values(it.previews)) ids.add(id)
     for (const id of Object.values(it.printFiles)) ids.add(id)
-    for (const id of designArtworkFileIds(it.design)) ids.add(id)
+    if (it.design) for (const id of designArtworkFileIds(it.design)) ids.add(id)
   }
   return [...ids]
 }
@@ -243,6 +275,8 @@ export interface NewOrderInput {
   vatCents: number
   paymentProvider: PaymentProvider
   customerNote?: string
+  /** Presupuesto del que procede el pedido (aceptación de una propuesta). */
+  quoteId?: string
 }
 
 export async function createOrder(input: NewOrderInput): Promise<Order> {
@@ -254,8 +288,8 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
     {
       sql: `INSERT INTO orders (id, public_token, status, customer_name, email, phone, company, tax_id,
               shipping_json, items_json, subtotal_cents, shipping_cents, total_cents, vat_cents,
-              payment_provider, payment_status, customer_note, created_at, updated_at)
-            VALUES (?, ?, 'pending_payment', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created', ?, ?, ?)`,
+              payment_provider, payment_status, customer_note, quote_id, created_at, updated_at)
+            VALUES (?, ?, 'pending_payment', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created', ?, ?, ?, ?)`,
       args: [
         id,
         token,
@@ -272,6 +306,7 @@ export async function createOrder(input: NewOrderInput): Promise<Order> {
         input.vatCents,
         input.paymentProvider,
         input.customerNote?.trim() || null,
+        input.quoteId ?? null,
         now,
         now,
       ],
@@ -326,6 +361,8 @@ export async function markOrderPaid(
   }
   const order = await getOrderById(orderId)
   if (!order) throw new Error('Pedido no encontrado')
+  // Un pedido que procede de un presupuesto, al cobrarse, cierra el presupuesto como ganado.
+  if (res.rowsAffected > 0 && order.quoteId) await markQuoteWon(order.quoteId)
   return { order, alreadyPaid: res.rowsAffected === 0 }
 }
 
@@ -419,6 +456,8 @@ export async function updateOrderStatus(
     'write',
   )
   const updated = await getOrderById(orderId)
+  // Cobro anotado a mano (p. ej. transferencia) de un pedido que procede de un presupuesto: también lo gana.
+  if (markCaptured && updated?.quoteId) await markQuoteWon(updated.quoteId)
   return updated ? { ok: true, order: updated } : { ok: false, error: 'Pedido no encontrado' }
 }
 

@@ -190,7 +190,13 @@ export function buildPayPalOrderPayload(order: OrderForPayPal) {
           breakdown: { item_total: eur(order.subtotalCents), shipping: eur(order.shippingCents) },
         },
         items: order.items.map((it) => ({
-          name: `${it.productName} · ${it.colorName} · ${it.quantity} ${it.quantity === 1 ? 'ud' : 'uds'}`.slice(0, 127),
+          // Líneas de presupuesto: la descripción de la dueña (no tienen color). Diseños: "Producto · Color".
+          name: [
+            it.kind === 'quote' ? it.description?.trim() || it.productName : `${it.productName} · ${it.colorName}`,
+            `${it.quantity} ${it.quantity === 1 ? 'ud' : 'uds'}`,
+          ]
+            .join(' · ')
+            .slice(0, 127),
           quantity: '1',
           unit_amount: eur(it.totalCents),
           category: 'PHYSICAL_GOODS',
@@ -211,12 +217,16 @@ export function buildPayPalOrderPayload(order: OrderForPayPal) {
   }
 }
 
-export async function createPayPalOrder(order: OrderForPayPal): Promise<PayPalOrderResponse> {
+/**
+ * Crea el pedido en PayPal. `requestKey` (por defecto el id del pedido) hace la petición idempotente: si se repite
+ * por un fallo de red, PayPal devuelve el mismo pedido. Un pago que se retoma más tarde (propuesta de presupuesto)
+ * pasa otra clave para obtener un pedido de PayPal nuevo en lugar de uno caducado.
+ */
+export async function createPayPalOrder(order: OrderForPayPal, requestKey = order.id): Promise<PayPalOrderResponse> {
   return paypalRequest<PayPalOrderResponse>('/v2/checkout/orders', {
     method: 'POST',
     body: buildPayPalOrderPayload(order),
-    // Si se repite la petición por un fallo de red, PayPal devuelve el mismo pedido.
-    headers: { 'PayPal-Request-Id': `create-${order.id}`, Prefer: 'return=representation' },
+    headers: { 'PayPal-Request-Id': `create-${requestKey}`, Prefer: 'return=representation' },
   })
 }
 

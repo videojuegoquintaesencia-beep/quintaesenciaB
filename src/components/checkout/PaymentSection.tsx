@@ -20,6 +20,7 @@ export function PaymentSection({
   bridge,
   totalCents,
   shippingEstimated,
+  step = 4,
 }: {
   mode: PaymentMode
   paypalClientId: string
@@ -28,13 +29,17 @@ export function PaymentSection({
   totalCents: number
   /** true mientras el envío es una estimación (falta un código postal válido). */
   shippingEstimated: boolean
+  /** Número del paso en el formulario (null cuando el pago va solo, sin pasos anteriores). */
+  step?: number | null
 }) {
   return (
     <section className="card p-5 sm:p-6" aria-labelledby="sec-pago">
       <h2 id="sec-pago" className="flex items-center gap-3 text-2xl">
-        <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-yellow font-display text-lg">
-          4
-        </span>
+        {step !== null && (
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-yellow font-display text-lg">
+            {step}
+          </span>
+        )}
         Pago
       </h2>
       <div className="mt-5">
