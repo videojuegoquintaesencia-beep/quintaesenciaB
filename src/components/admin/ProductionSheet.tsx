@@ -191,8 +191,12 @@ function ItemSection({ item, index }: { item: OrderItem; index: number }) {
   )
 }
 
-/** Hoja A4 de producción: legible en blanco y negro, con el pedido, las tallas, cada estampado y la etiqueta de envío. */
-export function ProductionSheet({ order, quote }: { order: Order; quote?: QuoteSource }) {
+/**
+ * Hoja A4 de producción: legible en blanco y negro, con el pedido, las tallas, cada estampado y la etiqueta de envío.
+ * `sender` es el remite de la etiqueta (nombre, dirección y teléfono efectivos), que la página construye con los ajustes;
+ * `quote` es el presupuesto de origen cuando el pedido nace de una propuesta aceptada.
+ */
+export function ProductionSheet({ order, quote, sender }: { order: Order; quote?: QuoteSource; sender: string }) {
   const units = order.items.reduce((n, i) => n + i.quantity, 0)
   const s = order.shipping
   return (
@@ -261,9 +265,7 @@ export function ProductionSheet({ order, quote }: { order: Order; quote?: QuoteS
           <p className="text-2xl leading-snug">{s.province} (España)</p>
           <p className="mt-2 text-xl">Tel. {order.phone}</p>
         </address>
-        <p className="mt-4 border-t-2 border-black pt-2 text-sm">
-          Remite: {[site.name, site.contact.address || site.business.registeredAddress, site.contact.phone].filter(Boolean).join(' · ')}
-        </p>
+        <p className="mt-4 border-t-2 border-black pt-2 text-sm">Remite: {sender}</p>
       </section>
 
       <p className="text-center text-xs">Impreso el {adminDateTime(new Date().toISOString())}</p>

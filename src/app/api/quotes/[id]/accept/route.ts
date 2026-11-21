@@ -1,5 +1,5 @@
 import { after } from 'next/server'
-import { PAYMENT_UNAVAILABLE_MESSAGE } from '@/lib/checkout'
+import { paymentUnavailableMessage } from '@/lib/checkout'
 import { readBodyJson } from '@/lib/http-body'
 import { isValidId } from '@/lib/ids'
 import { runMaintenanceIfDue } from '@/lib/maintenance'
@@ -38,7 +38,7 @@ function toResponse(result: AcceptResult): Response {
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const mode = paymentMode()
-  if (mode === 'unavailable') return Response.json({ error: PAYMENT_UNAVAILABLE_MESSAGE, code: 'unavailable' }, { status: 503 })
+  if (mode === 'unavailable') return Response.json({ error: await paymentUnavailableMessage(), code: 'unavailable' }, { status: 503 })
 
   const ip = clientIp(req)
   const gate = rateLimit(`quote-accept-any:${ip}`, 200, 10 * 60_000)

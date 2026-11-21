@@ -1,4 +1,4 @@
-import { site } from '@/config/site'
+import type { ContactSettings } from '@/lib/settings-schema'
 
 export interface ContactLink {
   key: 'email' | 'phone' | 'whatsapp' | 'instagram' | 'tiktok'
@@ -15,15 +15,16 @@ function social(value: string, base: string): string {
   return `${base}${value.replace(/^@/, '')}`
 }
 
-/** Enlaces de contacto con datos reales de `site.contact`; los campos vacíos se omiten. */
-export function contactLinks(): ContactLink[] {
-  // `site` es `as const`: se ensancha a string para que los datos que el dueño deje vacíos se oculten.
-  const c: Record<keyof typeof site.contact, string> = site.contact
+/**
+ * Enlaces de contacto a partir de los datos efectivos (`getSettings().contact`, que la dueña edita en el panel);
+ * los campos vacíos se omiten.
+ */
+export function contactLinks(c: ContactSettings): ContactLink[] {
   const out: ContactLink[] = []
   if (c.email) out.push({ key: 'email', label: 'Correo', text: c.email, href: `mailto:${c.email}` })
   if (c.phone) out.push({ key: 'phone', label: 'Teléfono', text: c.phone, href: `tel:${c.phone.replace(/[^\d+]/g, '')}` })
   if (c.whatsapp)
-    out.push({ key: 'whatsapp', label: 'WhatsApp', text: 'Escríbenos por WhatsApp', href: whatsappUrl(), external: true })
+    out.push({ key: 'whatsapp', label: 'WhatsApp', text: 'Escríbenos por WhatsApp', href: whatsappUrl(c.whatsapp), external: true })
   if (c.instagram)
     out.push({ key: 'instagram', label: 'Instagram', text: 'Instagram', href: social(c.instagram, 'https://www.instagram.com/'), external: true })
   if (c.tiktok)
@@ -32,8 +33,7 @@ export function contactLinks(): ContactLink[] {
 }
 
 /** Enlace wa.me con un mensaje inicial (vacío si no hay WhatsApp configurado). */
-export function whatsappUrl(message = 'Hola, quería información sobre un pedido personalizado.'): string {
-  const whatsapp: string = site.contact.whatsapp
+export function whatsappUrl(whatsapp: string, message = 'Hola, quería información sobre un pedido personalizado.'): string {
   const number = whatsapp.replace(/\D/g, '')
   if (!number) return ''
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`

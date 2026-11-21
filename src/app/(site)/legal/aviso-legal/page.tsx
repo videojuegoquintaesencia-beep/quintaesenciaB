@@ -5,6 +5,8 @@ import { OwnerFacts } from '@/components/content/LegalValue'
 import { pageMetadata } from '@/components/content/metadata'
 import { siteHost } from '@/components/content/contact-info'
 import { site } from '@/config/site'
+import { getSettings } from '@/lib/settings'
+import type { BusinessSettings, ContactSettings } from '@/lib/settings-schema'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Aviso legal',
@@ -12,7 +14,8 @@ export const metadata: Metadata = pageMetadata({
   path: '/legal/aviso-legal',
 })
 
-const SECTIONS: LegalSection[] = [
+/** Los datos del titular y el email salen de los ajustes efectivos (editables en el panel). */
+const sections = (business: BusinessSettings, contact: ContactSettings): LegalSection[] => [
   {
     id: 'titular',
     title: 'Quién es el titular de la web',
@@ -22,7 +25,7 @@ const SECTIONS: LegalSection[] = [
           En cumplimiento del artículo 10 de la Ley 34/2002, de servicios de la sociedad de la información y de comercio
           electrónico (LSSI-CE), estos son los datos del titular de este sitio web:
         </p>
-        <OwnerFacts />
+        <OwnerFacts business={business} contact={contact} />
         <p>
           {site.name} es el nombre comercial con el que el titular presta el servicio de venta online de productos personalizados.
         </p>
@@ -137,19 +140,20 @@ const SECTIONS: LegalSection[] = [
     content: (
       <p>
         Tenemos a tu disposición hojas oficiales de reclamaciones. Puedes pedírnoslas escribiendo a{' '}
-        {site.contact.email ? <a href={`mailto:${site.contact.email}`}>{site.contact.email}</a> : 'nuestro correo de contacto'} y
+        {contact.email ? <a href={`mailto:${contact.email}`}>{contact.email}</a> : 'nuestro correo de contacto'} y
         también puedes dirigirte a los servicios de consumo de tu comunidad autónoma.
       </p>
     ),
   },
 ]
 
-export default function AvisoLegalPage() {
+export default async function AvisoLegalPage() {
+  const { business, contact } = await getSettings()
   return (
     <LegalPage
       title="Aviso legal"
       intro="Quién está detrás de esta web, cómo puedes usarla y qué ley se aplica."
-      sections={SECTIONS}
+      sections={sections(business, contact)}
     />
   )
 }

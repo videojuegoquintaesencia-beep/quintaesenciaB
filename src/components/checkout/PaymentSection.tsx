@@ -1,7 +1,6 @@
 'use client'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { site } from '@/config/site'
 import { formatEUR } from '@/lib/format'
 import type { PaymentMode } from '@/lib/paypal'
 import { DemoPayment } from './DemoPayment'
@@ -21,6 +20,7 @@ export function PaymentSection({
   totalCents,
   shippingEstimated,
   step = 4,
+  contactEmail,
 }: {
   mode: PaymentMode
   paypalClientId: string
@@ -31,6 +31,8 @@ export function PaymentSection({
   shippingEstimated: boolean
   /** Número del paso en el formulario (null cuando el pago va solo, sin pasos anteriores). */
   step?: number | null
+  /** Email de contacto efectivo (ajustes del panel); vacío si la tienda no publica uno. */
+  contactEmail: string
 }) {
   return (
     <section className="card p-5 sm:p-6" aria-labelledby="sec-pago">
@@ -64,8 +66,8 @@ export function PaymentSection({
             El pago online no está disponible ahora mismo. Escríbenos desde la{' '}
             <Link href="/contacto" className="underline">
               página de contacto
-            </Link>{' '}
-            o a {site.contact.email} y cerramos tu pedido contigo.
+            </Link>
+            {contactEmail ? ` o a ${contactEmail}` : ''} y cerramos tu pedido contigo.
           </p>
         )}
       </div>

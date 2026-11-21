@@ -124,6 +124,7 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
             </section>
           ) : (
             <ProposalAcceptClient
+              legalName={settings.business.legalName}
               quoteId={quote.id}
               token={t}
               mode={paymentMode()}

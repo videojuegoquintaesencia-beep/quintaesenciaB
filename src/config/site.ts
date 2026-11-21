@@ -103,12 +103,20 @@ export function isPlaceholderValue(value: string): boolean {
   return value.startsWith('[') || /@[^@\s]*\.example$/i.test(value)
 }
 
+/** Datos del titular y de contacto que se comprueban: `site` por defecto o los ajustes efectivos guardados en el panel. */
+export interface OwnerValues {
+  business: { legalName: string; taxId: string; registeredAddress: string; processors: string }
+  contact: { email: string }
+}
+
 /**
- * Datos de `site` que siguen siendo de ejemplo. El arranque en producción los registra como error
- * (ver `productionConfigIssues`) para que no se publique la web con datos del titular o de contacto ficticios.
+ * Datos del titular y de contacto que siguen siendo de ejemplo. Por defecto mira `site` (el código); el arranque y el
+ * panel le pasan los ajustes efectivos (lo guardado en el panel sobre los valores en código), que es lo que ve el
+ * cliente. En producción se registra como error (ver `productionConfigIssues`) para que no se publique la web con
+ * datos ficticios en el aviso legal o en los emails.
  */
-export function sitePlaceholders(): string[] {
-  const { business, contact } = site
+export function sitePlaceholders(values: OwnerValues = site): string[] {
+  const { business, contact } = values
   const fields: [string, string][] = [
     ['business.legalName', business.legalName],
     ['business.taxId', business.taxId],

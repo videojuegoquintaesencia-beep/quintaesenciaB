@@ -1,6 +1,5 @@
 'use client'
 import { TextAreaField, TextField } from '@/components/ui/Field'
-import { site } from '@/config/site'
 import { quoteFormSchema, type QuoteProduct } from '@/lib/quote-form'
 import { ConsentField, FormAlert, FormSuccess, Honeypot, SubmitButton } from './FormParts'
 import { ProductChips } from './ProductChips'
@@ -36,8 +35,8 @@ const INITIAL: Values = {
   website: '',
 }
 
-/** Formulario de solicitud de presupuesto para empresas, equipos y eventos. */
-export function QuoteForm() {
+/** Formulario de solicitud de presupuesto para empresas, equipos y eventos. `contactEmail` es el email efectivo de la tienda. */
+export function QuoteForm({ contactEmail }: { contactEmail: string }) {
   const uploads = useUploads()
   const form = useIntakeForm<Values>({
     endpoint: '/api/quotes',
@@ -45,6 +44,7 @@ export function QuoteForm() {
     initial: INITIAL,
     schema: quoteFormSchema,
     toInput: (v) => ({ ...v, fileIds: uploads.ids }),
+    contactEmail,
     preflight: () =>
       uploads.uploading
         ? 'Espera a que terminen de subirse los archivos.'
@@ -180,11 +180,17 @@ export function QuoteForm() {
       <div className="flex flex-wrap items-center gap-4">
         <SubmitButton submitting={status === 'submitting'}>Enviar solicitud</SubmitButton>
         <p className="text-sm text-ink-soft">
-          Respondemos en 1-2 días laborables. También puedes escribirnos a{' '}
-          <a href={`mailto:${site.contact.email}`} className="font-bold text-violet-deep underline [overflow-wrap:anywhere]">
-            {site.contact.email}
-          </a>
-          .
+          Respondemos en 1-2 días laborables.
+          {contactEmail && (
+            <>
+              {' '}
+              También puedes escribirnos a{' '}
+              <a href={`mailto:${contactEmail}`} className="font-bold text-violet-deep underline [overflow-wrap:anywhere]">
+                {contactEmail}
+              </a>
+              .
+            </>
+          )}
         </p>
       </div>
     </form>

@@ -128,7 +128,7 @@ export async function emailShell(opts: {
       ${cta}
     </td></tr>
     <tr><td style="padding:18px 8px;font-size:13px;line-height:1.5;color:#4a4270;text-align:center">
-      ${escapeHtml(site.name)} · ${escapeHtml(contact.email)}${contact.phone ? ` · ${escapeHtml(contact.phone)}` : ''}<br>
+      ${[site.name, contact.email, contact.phone].filter(Boolean).map(escapeHtml).join(' · ')}<br>
       ${escapeHtml(owner)}<br>
       <a href="${escapeHtml(absoluteUrl('/legal/aviso-legal'))}" style="color:#4a4270">Aviso legal</a> · <a href="${escapeHtml(absoluteUrl('/legal/privacidad'))}" style="color:#4a4270">Privacidad</a><br>
       Recibes este email porque has hecho un pedido o una consulta en ${escapeHtml(site.name)}.

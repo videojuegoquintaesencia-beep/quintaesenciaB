@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { PrintButton } from '@/components/admin/PrintButton'
 import { ProductionSheet } from '@/components/admin/ProductionSheet'
+import { site } from '@/config/site'
 import { isValidId } from '@/lib/ids'
 import { loadOrder, loadOrderQuoteSource } from '@/lib/admin/queries'
+import { getSettings } from '@/lib/settings'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -27,7 +29,9 @@ export default async function ProductionPage({ params }: Props) {
   if (!isValidId(id)) notFound()
   const order = await loadOrder(id)
   if (!order) notFound()
-  const quote = await loadOrderQuoteSource(order)
+  // Remite de la etiqueta: dirección pública del taller o, si no hay, el domicilio fiscal (ajustes del panel).
+  const [quote, { business, contact }] = await Promise.all([loadOrderQuoteSource(order), getSettings()])
+  const sender = [site.name, contact.address || business.registeredAddress, contact.phone].filter(Boolean).join(' · ')
 
   return (
     <>
@@ -38,7 +42,7 @@ export default async function ProductionPage({ params }: Props) {
         description="Imprímela en A4 y marca cada paso a medida que avanzas. También puedes marcar las casillas en pantalla."
         actions={<PrintButton className="btn btn-primary btn-lg" />}
       />
-      <ProductionSheet order={order} quote={quote} />
+      <ProductionSheet order={order} quote={quote} sender={sender} />
     </>
   )
 }

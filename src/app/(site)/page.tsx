@@ -11,6 +11,8 @@ import { WhyDtf } from '@/components/home/WhyDtf'
 import { contactLinks } from '@/components/site/contact-links'
 import { JsonLd } from '@/components/site/JsonLd'
 import { OG_IMAGES } from '@/lib/og-meta'
+import { getSettings } from '@/lib/settings'
+import type { ContactSettings } from '@/lib/settings-schema'
 
 const title = `${site.name}: camisetas, sudaderas, gorras y tazas personalizadas`
 
@@ -21,11 +23,10 @@ export const metadata: Metadata = {
   openGraph: { title, description: site.description, url: '/', type: 'website', locale: 'es_ES', siteName: site.name, images: OG_IMAGES },
 }
 
-function structuredData() {
-  const links = contactLinks()
+/** JSON-LD de la organización con los datos de contacto efectivos (los vacíos no se publican). */
+function structuredData(contact: ContactSettings) {
+  const links = contactLinks(contact)
   const sameAs = links.filter((l) => l.key === 'instagram' || l.key === 'tiktok').map((l) => l.href)
-  // `site` es `as const`: se ensancha a string para que el teléfono (o el email) vacíos no salgan en el JSON-LD.
-  const contact: Record<keyof typeof site.contact, string> = site.contact
   const reach = {
     ...(contact.email ? { email: contact.email } : {}),
     ...(contact.phone ? { telephone: contact.phone } : {}),
@@ -62,8 +63,9 @@ function structuredData() {
   return { organization, website }
 }
 
-export default function HomePage() {
-  const { organization, website } = structuredData()
+export default async function HomePage() {
+  const { contact } = await getSettings()
+  const { organization, website } = structuredData(contact)
   return (
     <>
       <Hero />

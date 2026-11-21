@@ -39,6 +39,7 @@ export function ProposalAcceptClient({
   prefill,
   resume,
   contactEmail,
+  legalName,
 }: {
   quoteId: string
   token: string
@@ -49,6 +50,8 @@ export function ProposalAcceptClient({
   /** Pedido pendiente de pago ya creado para esta propuesta, si lo hay. */
   resume: { orderNumber: string } | null
   contactEmail: string
+  /** Razón social del titular (ajustes del panel), para el texto de los consentimientos. */
+  legalName: string
 }) {
   const router = useRouter()
   const [values, setValues] = useState<FormValues>(() => ({
@@ -151,7 +154,14 @@ export function ProposalAcceptClient({
           </span>
         </p>
       ) : (
-        <CheckoutForm values={values} errors={errors} onChange={update} onPostalCodeChange={onPostalCodeChange} />
+        <CheckoutForm
+          values={values}
+          errors={errors}
+          onChange={update}
+          onPostalCodeChange={onPostalCodeChange}
+          legalName={legalName}
+          contactEmail={contactEmail}
+        />
       )}
 
       {failure && (
@@ -179,6 +189,7 @@ export function ProposalAcceptClient({
       )}
 
       <PaymentSection
+        contactEmail={contactEmail}
         mode={mode}
         paypalClientId={paypalClientId}
         bridge={bridge}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { isPlaceholderValue, site } from '@/config/site'
+import type { BusinessSettings, ContactSettings } from '@/lib/settings-schema'
 
 /**
  * Dato del titular. Si sigue siendo un marcador "[COMPLETAR: …]" (o un email de ejemplo) se resalta para que el
@@ -23,10 +24,11 @@ export function LegalFacts({ rows }: { rows: { label: string; value: ReactNode }
   )
 }
 
-/** Datos identificativos del titular (LSSI-CE art. 10), con los campos vacíos omitidos. */
-export function OwnerFacts() {
-  const business: Record<keyof typeof site.business, string> = site.business
-  const contact: Record<keyof typeof site.contact, string> = site.contact
+/**
+ * Datos identificativos del titular (LSSI-CE art. 10), con los campos vacíos omitidos. Los valores son los ajustes
+ * efectivos (`getSettings()`), que la página de servidor le pasa: así el aviso legal cambia al editarlos en el panel.
+ */
+export function OwnerFacts({ business, contact }: { business: BusinessSettings; contact: ContactSettings }) {
   const rows: { label: string; value: ReactNode }[] = [
     { label: 'Titular', value: <LegalValue>{business.legalName}</LegalValue> },
     { label: 'NIF/CIF', value: <LegalValue>{business.taxId}</LegalValue> },

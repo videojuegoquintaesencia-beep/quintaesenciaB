@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { TrackingForm } from '@/components/checkout/TrackingForm'
-import { site } from '@/config/site'
+import { getSettings } from '@/lib/settings'
 
 export const metadata: Metadata = {
   title: 'Seguimiento de pedido',
@@ -10,7 +10,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 }
 
-export default function TrackingPage() {
+export default async function TrackingPage() {
+  const { contact } = await getSettings()
   return (
     <div className="container-pop py-10 sm:py-14">
       <div className="mx-auto max-w-xl">
@@ -25,8 +26,8 @@ export default function TrackingPage() {
           ¿No encuentras tu pedido? Escríbenos desde la página de{' '}
           <Link href="/contacto" className="font-bold text-violet-deep underline">
             contacto
-          </Link>{' '}
-          o a {site.contact.email}.
+          </Link>
+          {contact.email ? ` o a ${contact.email}.` : '.'}
         </p>
       </div>
     </div>

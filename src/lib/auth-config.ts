@@ -7,7 +7,7 @@
  * exige nada (hay valores por defecto para trabajar).
  */
 
-import { sitePlaceholders } from '@/config/site'
+import { sitePlaceholders, type OwnerValues } from '@/config/site'
 
 export const MIN_ADMIN_PASSWORD_LENGTH = 12
 export const MIN_SESSION_SECRET_LENGTH = 32
@@ -46,8 +46,12 @@ export function adminAuthProblems(): string[] {
   return [adminPasswordProblem(), sessionSecretProblem()].filter((p): p is string => p !== null)
 }
 
-/** Avisos de configuración de producción para mostrar al arrancar el servidor. */
-export function productionConfigIssues(): { level: 'error' | 'warn'; message: string }[] {
+/**
+ * Avisos de configuración de producción para mostrar al arrancar el servidor. `owner` son los datos del titular y de
+ * contacto efectivos (los del panel sobre los del código); sin él se miran solo los del código. La variante que lee
+ * los ajustes guardados está en `lib/production-checks.ts` (este módulo no puede tocar la base de datos).
+ */
+export function productionConfigIssues(owner?: OwnerValues): { level: 'error' | 'warn'; message: string }[] {
   if (!isProduction()) return []
   const issues: { level: 'error' | 'warn'; message: string }[] = adminAuthProblems().map((message) => ({ level: 'error', message }))
   const env = process.env
@@ -59,11 +63,11 @@ export function productionConfigIssues(): { level: 'error' | 'warn'; message: st
         'NEXT_PUBLIC_SITE_URL no está definido (o apunta a localhost): los enlaces de los emails (seguimiento del pedido, panel), el sitemap y las URL canónicas saldrán con http://localhost:3000. Defínelo con el dominio público (https://…) ANTES de compilar (next build).',
     })
   }
-  const placeholders = sitePlaceholders()
+  const placeholders = sitePlaceholders(owner)
   if (placeholders.length > 0) {
     issues.push({
       level: 'error',
-      message: `Completa src/config/site.ts antes de publicar: siguen siendo datos de ejemplo ${placeholders.join(', ')}. El aviso legal (art. 10 LSSI-CE) y los emails saldrían con datos ficticios.`,
+      message: `Completa los datos del titular y de contacto antes de publicar (panel → Ajustes, o src/config/site.ts): siguen siendo datos de ejemplo ${placeholders.join(', ')}. El aviso legal (art. 10 LSSI-CE) y los emails saldrían con datos ficticios.`,
     })
   }
   if (env.TRUSTED_PROXY_HOPS === undefined || env.TRUSTED_PROXY_HOPS.trim() === '') {
@@ -82,6 +86,19 @@ export function productionConfigIssues(): { level: 'error' | 'warn'; message: st
   }
   if (!env.SMTP_HOST) {
     issues.push({ level: 'warn', message: 'SMTP_HOST no está definido: los emails (confirmaciones, avisos) NO se envían a nadie.' })
+  }
+  // El panel permite dejar el email de contacto vacío: entonces los avisos internos y el remitente dependen de las variables.
+  if (owner && owner.contact.email === '') {
+    const consequences = [
+      !env.ADMIN_NOTIFY_EMAIL ? 'sin ADMIN_NOTIFY_EMAIL no se envía ningún aviso interno de pedidos, presupuestos ni mensajes' : null,
+      env.SMTP_HOST && !env.MAIL_FROM ? 'sin MAIL_FROM los emails saldrían sin una dirección de remitente válida' : null,
+    ].filter((m): m is string => m !== null)
+    if (consequences.length > 0) {
+      issues.push({
+        level: env.ADMIN_NOTIFY_EMAIL ? 'warn' : 'error',
+        message: `El email de contacto está vacío en los ajustes del panel: ${consequences.join(' y ')}. Rellénalo en Ajustes → Contacto y redes o define esas variables.`,
+      })
+    }
   }
   if ((env.DATABASE_URL ?? 'file:').startsWith('file:')) {
     issues.push({ level: 'warn', message: 'DATABASE_URL apunta a un archivo local: en hosting sin disco persistente (p. ej. Vercel) se perderán los datos. Usa Turso.' })
