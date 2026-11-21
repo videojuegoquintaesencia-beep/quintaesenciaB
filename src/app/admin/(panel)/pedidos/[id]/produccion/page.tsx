@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { PrintButton } from '@/components/admin/PrintButton'
 import { ProductionSheet } from '@/components/admin/ProductionSheet'
 import { isValidId } from '@/lib/ids'
-import { loadOrder } from '@/lib/admin/queries'
+import { loadOrder, loadOrderQuoteSource } from '@/lib/admin/queries'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -27,6 +27,7 @@ export default async function ProductionPage({ params }: Props) {
   if (!isValidId(id)) notFound()
   const order = await loadOrder(id)
   if (!order) notFound()
+  const quote = await loadOrderQuoteSource(order)
 
   return (
     <>
@@ -37,7 +38,7 @@ export default async function ProductionPage({ params }: Props) {
         description="Imprímela en A4 y marca cada paso a medida que avanzas. También puedes marcar las casillas en pantalla."
         actions={<PrintButton className="btn btn-primary btn-lg" />}
       />
-      <ProductionSheet order={order} />
+      <ProductionSheet order={order} quote={quote} />
     </>
   )
 }

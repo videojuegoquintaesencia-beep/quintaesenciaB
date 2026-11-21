@@ -1,6 +1,7 @@
 /** Exportación de pedidos a CSV respetando los filtros de la lista (solo servidor). */
 import 'server-only'
 import { getDb } from '@/lib/db'
+import { isQuoteItem, orderItemTitle } from '@/lib/order-items'
 import { listOrders, type ListOrdersOptions, type OrderItem, type OrderSummary } from '@/lib/orders'
 import { ORDER_STATUS_LABEL } from '@/lib/order-status'
 import type { Address } from '@/lib/validators'
@@ -51,7 +52,8 @@ interface ExtraRow {
 function productsSummary(itemsJson: string): string {
   try {
     const items = JSON.parse(itemsJson) as OrderItem[]
-    return items.map((i) => `${i.quantity} × ${i.productName} ${i.colorName}`).join(' | ')
+    // Líneas de presupuesto: la descripción de la dueña (no tienen color).
+    return items.map((i) => `${i.quantity} × ${isQuoteItem(i) ? `${orderItemTitle(i)} (presupuesto)` : `${i.productName} ${i.colorName}`}`).join(' | ')
   } catch {
     return ''
   }

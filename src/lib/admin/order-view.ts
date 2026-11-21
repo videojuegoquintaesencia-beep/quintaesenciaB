@@ -5,7 +5,20 @@
  */
 import { getArea, getProduct, type Product } from '@/config/products'
 import { areaUsage, designArtworkFileIds, FONTS, type Layer } from '@/lib/design'
+import type { FileMeta } from '@/lib/files'
 import type { OrderItem } from '@/lib/orders'
+
+/** Presupuesto del que procede un pedido, con sus adjuntos (las líneas de presupuesto no llevan archivos propios). */
+export interface QuoteSource {
+  id: string
+  number: string
+  files: FileMeta[]
+}
+
+/** true si la línea trae un desglose por tallas (y no solo "unica"). */
+export function hasSizeBreakdown(item: Pick<OrderItem, 'sizes'>): boolean {
+  return Object.entries(item.sizes).some(([size, qty]) => size !== 'unica' && qty > 0)
+}
 
 export interface PlacementView {
   areaId: string
@@ -75,7 +88,7 @@ export function buildItemView(item: OrderItem): ItemView {
 
   const placements = item.prints.map((print) => {
     const area = product ? getArea(product, print.areaId) : undefined
-    const layers = item.design.areas[print.areaId]?.layers ?? []
+    const layers = item.design?.areas[print.areaId]?.layers ?? []
     const usage = area ? areaUsage(layers, area) : null
     const view: PlacementView = {
       areaId: print.areaId,
@@ -114,7 +127,8 @@ export function buildItemView(item: OrderItem): ItemView {
     product,
     sizeRows: sizeRows(item, product),
     groups,
-    artworkFileIds: designArtworkFileIds(item.design),
+    // Las líneas de presupuesto no llevan diseño (sus adjuntos están en el presupuesto).
+    artworkFileIds: item.design ? designArtworkFileIds(item.design) : [],
   }
 }
 

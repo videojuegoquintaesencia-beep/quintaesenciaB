@@ -7,6 +7,7 @@ import 'server-only'
 import { site } from '@/config/site'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, ownerLine, sendMail, type MailResult } from '../email'
 import { formatEUR, unidades } from '../format'
+import { isQuoteItem, orderItemTitle, quoteLineNote } from '../order-items'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL } from '../order-status'
 import { ENTITY_WORD } from './names'
 import type { Order, OrderItem } from '../orders'
@@ -52,17 +53,26 @@ function itemsHtml(order: Order): string {
         it.discountCents > 0
           ? `<br><span style="font-size:13px;color:${MUTED}">Descuento por cantidad (${it.discountPct}\u00a0%): −${esc(formatEUR(it.discountCents))}</span>`
           : ''
-      return `<tr>
-        <td style="padding:10px 0;border-bottom:1px solid ${LINE};vertical-align:top">
-          <strong>${esc(it.productName)}</strong>
+      // Las líneas de presupuesto no tienen color ni diseño: descripción de la dueña y referencia al presupuesto.
+      const head = isQuoteItem(it)
+        ? `<strong>${esc(orderItemTitle(it))}</strong><br><span style="font-size:14px;color:${MUTED}">${esc(quoteLineText(order, it))}</span>`
+        : `<strong>${esc(it.productName)}</strong>
           <span style="display:inline-block;width:11px;height:11px;margin:0 4px 0 8px;border:1px solid #1b1340;border-radius:50%;background:${esc(it.colorHex)};vertical-align:middle"></span>${esc(it.colorName)}<br>
-          <span style="font-size:14px;color:${MUTED}">${esc(sizesText(it))}</span>${discount}
-        </td>
+          <span style="font-size:14px;color:${MUTED}">${esc(sizesText(it))}</span>`
+      return `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid ${LINE};vertical-align:top">${head}${discount}</td>
         <td style="padding:10px 0 10px 12px;border-bottom:1px solid ${LINE};text-align:right;white-space:nowrap;vertical-align:top;font-weight:700">${esc(formatEUR(it.totalCents))}</td>
       </tr>`
     })
     .join('')
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 0">${rows}</table>`
+}
+
+/** "Según presupuesto PR-1001 · 6 unidades · 12,00 € por unidad" (líneas de un presupuesto aceptado). */
+function quoteLineText(order: Order, it: OrderItem): string {
+  const parts = [quoteLineNote(order.quoteNumber), sizesText(it)]
+  if (it.unitCents !== undefined) parts.push(`${formatEUR(it.unitCents)} por unidad`)
+  return parts.join(' · ')
 }
 
 function totalsHtml(order: Order): string {
@@ -84,6 +94,7 @@ function itemsText(order: Order): string {
   return order.items
     .map((it) => {
       const discount = it.discountCents > 0 ? ` (descuento ${it.discountPct}\u00a0%: −${formatEUR(it.discountCents)})` : ''
+      if (isQuoteItem(it)) return `- ${orderItemTitle(it)} · ${quoteLineText(order, it)} · ${formatEUR(it.totalCents)}`
       return `- ${it.productName}, ${it.colorName} · ${sizesText(it)} · ${formatEUR(it.totalCents)}${discount}`
     })
     .join('\n')
@@ -213,6 +224,7 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
 function printsText(order: Order): string {
   return order.items
     .map((it) => {
+      if (isQuoteItem(it)) return `- ${orderItemTitle(it)} · ${quoteLineText(order, it)} (archivos en el presupuesto)`
       const zones = it.prints.map((p) => `${p.label} (${Math.round(p.usedCm2)} cm²)`).join(', ')
       return `- ${it.productName} ${it.colorName} · ${sizesText(it)} · Estampado: ${zones}${it.note ? ` · Nota: ${it.note}` : ''}`
     })
@@ -227,12 +239,16 @@ export async function sendOrderAdminAlert(order: Order): Promise<MailResult> {
   const demo = isDemo(order)
   const who = [order.company, order.taxId ? `NIF/CIF ${order.taxId}` : null].filter((v): v is string => !!v)
   const itemNotes = order.items
-    .map((it) => (it.note ? `<li>${esc(it.productName)} ${esc(it.colorName)}: ${esc(it.note)}</li>` : ''))
+    .map((it) => (it.note ? `<li>${esc(orderItemTitle(it))}: ${esc(it.note)}</li>` : ''))
     .join('')
+  const fromQuote = order.quoteId
+    ? `<p style="margin:0 0 12px;background:#e4dcff;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Procede del presupuesto ${esc(order.quoteNumber ?? '')}: los archivos del cliente están en el presupuesto, no en el pedido.</p>`
+    : ''
   const html = await emailShell({
     title: `Nuevo pedido ${order.number} · ${formatEUR(order.totalCents)}`,
     preheader: `${order.customerName} · ${units} ${units === 1 ? 'unidad' : 'unidades'}`,
     bodyHtml: `${demo ? `<p style="background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">PAGO SIMULADO (modo demostración): no hay cobro real.</p>` : ''}
+      ${fromQuote}
       <p style="margin:0"><strong>${esc(order.customerName)}</strong>${who.length ? ` · ${who.map(esc).join(' · ')}` : ''}<br>
       <a href="mailto:${esc(order.email)}" style="color:#5a3fe0">${esc(order.email)}</a> · ${esc(order.phone)}</p>
       ${sectionTitle(`${units} ${units === 1 ? 'unidad' : 'unidades'}`)}
@@ -247,6 +263,7 @@ export async function sendOrderAdminAlert(order: Order): Promise<MailResult> {
   })
   const text = [
     `Nuevo pedido ${order.number} · ${formatEUR(order.totalCents)}${demo ? ' (PAGO SIMULADO, sin cobro real)' : ''}`,
+    order.quoteId ? `Procede del presupuesto ${order.quoteNumber ?? ''} (los archivos del cliente están en el presupuesto).` : '',
     `${order.customerName}${who.length ? ` · ${who.join(' · ')}` : ''}`,
     `${order.email} · ${order.phone}`,
     `\n${printsText(order)}`,

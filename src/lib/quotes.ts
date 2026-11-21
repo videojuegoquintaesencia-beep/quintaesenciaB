@@ -3,10 +3,12 @@
  * Ambos se guardan en la misma tabla, diferenciados por `kind`.
  */
 import 'server-only'
+import { timingSafeEqual } from 'node:crypto'
 import { getDb, nowIso } from './db'
 import { attachFiles } from './files'
 import { newId } from './ids'
 import { QUOTE_STATUSES, type QuoteStatus } from './order-status'
+import { proposalSchema, type Proposal } from './proposal'
 import type { ContactMessageInput, QuoteRequestInput } from './validators'
 
 export type QuoteKind = 'quote' | 'contact'
@@ -28,12 +30,20 @@ export interface Quote {
   fileIds: string[]
   status: QuoteStatus
   adminNote: string | null
+  /** Secreto del enlace público de la propuesta (se genera al enviarla por primera vez). */
+  publicToken: string | null
+  /** Propuesta de precio compuesta en el panel (borrador o enviada); null si aún no hay. */
+  proposal: Proposal | null
+  /** Último envío de la propuesta al cliente. */
+  proposalSentAt: string | null
+  /** Pedido creado al aceptar la propuesta. */
+  orderId: string | null
   createdAt: string
   updatedAt: string
 }
 
 const QUOTE_NUMBER_OFFSET = 1000
-const formatQuoteNumber = (kind: QuoteKind, seq: number) => `${kind === 'quote' ? 'PR' : 'MS'}-${QUOTE_NUMBER_OFFSET + seq}`
+export const formatQuoteNumber = (kind: QuoteKind, seq: number) => `${kind === 'quote' ? 'PR' : 'MS'}-${QUOTE_NUMBER_OFFSET + seq}`
 
 /** "PR-1004", "ms1004" o solo "1004" → seq 4 (y el tipo, si lleva prefijo). Null si no tiene el formato esperado. */
 export function parseQuoteNumber(value: string): { seq: number; kind: QuoteKind | null } | null {
@@ -50,11 +60,25 @@ function isQuoteStatus(v: unknown): v is QuoteStatus {
   return typeof v === 'string' && (QUOTE_STATUSES as readonly string[]).includes(v)
 }
 
+/** Propuesta guardada en JSON; si no pasa la validación (p. ej. de una versión futura) se trata como inexistente. */
+function parseProposal(json: unknown, quoteId: string): Proposal | null {
+  if (json == null) return null
+  try {
+    const parsed = proposalSchema.safeParse(JSON.parse(String(json)))
+    if (parsed.success) return parsed.data
+    console.warn(`[presupuestos] La propuesta guardada del presupuesto ${quoteId} no tiene un formato válido; se ignora.`)
+  } catch {
+    console.warn(`[presupuestos] La propuesta guardada del presupuesto ${quoteId} no es JSON válido; se ignora.`)
+  }
+  return null
+}
+
 function mapQuote(r: Row): Quote {
   const kind = (String(r.kind) === 'contact' ? 'contact' : 'quote') as QuoteKind
   const seq = Number(r.seq)
+  const id = String(r.id)
   return {
-    id: String(r.id),
+    id,
     seq,
     number: formatQuoteNumber(kind, seq),
     kind,
@@ -69,6 +93,10 @@ function mapQuote(r: Row): Quote {
     fileIds: JSON.parse(String(r.file_ids_json)),
     status: isQuoteStatus(r.status) ? r.status : 'new',
     adminNote: r.admin_note == null ? null : String(r.admin_note),
+    publicToken: r.public_token == null ? null : String(r.public_token),
+    proposal: parseProposal(r.proposal_json, id),
+    proposalSentAt: r.proposal_sent_at == null ? null : String(r.proposal_sent_at),
+    orderId: r.order_id == null ? null : String(r.order_id),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   }
@@ -213,4 +241,75 @@ export async function countNewQuotes(): Promise<number> {
   const db = await getDb()
   const res = await db.execute(`SELECT COUNT(*) AS n FROM quotes WHERE status = 'new'`)
   return Number(res.rows[0]?.n ?? 0)
+}
+
+/* ───────────── Propuesta de precio y enlace público ───────────── */
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a)
+  const bb = Buffer.from(b)
+  return ab.length === bb.length && timingSafeEqual(ab, bb)
+}
+
+/** Presupuesto por su enlace público (id + token secreto). Solo presupuestos con propuesta enviada. */
+export async function getQuoteByToken(id: string, token: string): Promise<Quote | null> {
+  const quote = await getQuote(id)
+  if (!quote || quote.kind !== 'quote' || !quote.publicToken || !quote.proposal || !quote.proposalSentAt) return null
+  return safeEqual(quote.publicToken, token) ? quote : null
+}
+
+/** Guarda (o sustituye) la propuesta. La inmutabilidad tras la aceptación la comprueba quien llama. */
+export async function saveQuoteProposal(id: string, proposal: Proposal): Promise<Quote | null> {
+  const db = await getDb()
+  await db.execute({
+    sql: `UPDATE quotes SET proposal_json = ?, updated_at = ? WHERE id = ?`,
+    args: [JSON.stringify(proposal), nowIso(), id],
+  })
+  return getQuote(id)
+}
+
+/**
+ * Deja constancia del envío de la propuesta: genera el token del enlace público si aún no existe, anota la fecha de
+ * envío y pasa el presupuesto a "Presupuesto enviado" (salvo si ya está ganado). El email lo envía quien llama.
+ */
+export async function markQuoteProposalSent(id: string, proposal: Proposal): Promise<Quote | null> {
+  const db = await getDb()
+  const now = nowIso()
+  await db.execute({
+    sql: `UPDATE quotes
+          SET proposal_json = ?, public_token = COALESCE(public_token, ?), proposal_sent_at = ?,
+              status = CASE WHEN status = 'won' THEN status ELSE 'quoted' END, updated_at = ?
+          WHERE id = ?`,
+    args: [JSON.stringify(proposal), newId(28), now, now, id],
+  })
+  return getQuote(id)
+}
+
+/**
+ * Vincula el pedido creado al aceptar la propuesta y guarda la propuesta con `acceptedAt`. Solo lo hace si el
+ * presupuesto no tenía ya un pedido (o tenía exactamente `replacingOrderId`, un pedido cancelado): así dos
+ * aceptaciones simultáneas no crean dos pedidos vinculados. Devuelve false si otro pedido se adelantó.
+ */
+export async function linkQuoteOrder(
+  id: string,
+  orderId: string,
+  proposal: Proposal,
+  replacingOrderId: string | null,
+): Promise<boolean> {
+  const db = await getDb()
+  const res = await db.execute({
+    sql: `UPDATE quotes SET order_id = ?, proposal_json = ?, updated_at = ?
+          WHERE id = ? AND (order_id IS NULL OR order_id = ?)`,
+    args: [orderId, JSON.stringify(proposal), nowIso(), id, replacingOrderId],
+  })
+  return res.rowsAffected > 0
+}
+
+/** El pedido del presupuesto se ha pagado: el presupuesto está ganado. Idempotente. */
+export async function markQuoteWon(id: string): Promise<void> {
+  const db = await getDb()
+  await db.execute({
+    sql: `UPDATE quotes SET status = 'won', updated_at = ? WHERE id = ? AND status <> 'won'`,
+    args: [nowIso(), id],
+  })
 }

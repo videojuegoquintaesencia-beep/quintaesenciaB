@@ -1,15 +1,22 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { Building2, CalendarClock, Mail, MessageCircle, Paperclip, Phone, Download, Shirt } from 'lucide-react'
+import Link from 'next/link'
+import { Building2, CalendarClock, Mail, MessageCircle, Package, Paperclip, Phone, Download, Shirt } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { Panel } from '@/components/admin/Panel'
+import { ProposalEditor } from '@/components/admin/ProposalEditor'
 import { QuoteForm } from '@/components/admin/QuoteForm'
-import { QuoteStatusBadge } from '@/components/admin/StatusBadges'
+import { OrderStatusBadge, QuoteStatusBadge } from '@/components/admin/StatusBadges'
 import { FileImage } from '@/components/admin/Thumb'
+import { Badge } from '@/components/ui/Badge'
 import { site } from '@/config/site'
 import { getProduct } from '@/config/products'
+import { proposalPagePath } from '@/lib/emails/quote'
 import { getFileMetas } from '@/lib/files'
+import { formatEUR } from '@/lib/format'
 import { isValidId } from '@/lib/ids'
+import { isLiveQuoteOrder, loadQuoteOrder } from '@/lib/quote-accept'
+import { getCatalog } from '@/lib/settings'
 import { adminDateTime, formatDeadline, timeAgo } from '@/lib/admin/dates'
 import { firstName, mailtoHref, telHref, whatsappHref } from '@/lib/admin/contact'
 import { loadQuote } from '@/lib/admin/queries'
@@ -32,7 +39,11 @@ export default async function QuoteDetailPage({ params }: Props) {
   if (!quote) notFound()
 
   const isQuote = quote.kind === 'quote'
-  const files = await getFileMetas(quote.fileIds)
+  const [files, order, catalog] = await Promise.all([getFileMetas(quote.fileIds), loadQuoteOrder(quote), getCatalog()])
+  // Con un pedido vivo la propuesta es inmutable; si ese pedido se canceló, se puede retocar y volver a aceptar.
+  const locked = !!order && isLiveQuoteOrder(order)
+  const publicUrl = quote.publicToken ? `${site.url}${proposalPagePath(quote)}` : null
+  const editorProducts = catalog.products.map((p) => ({ id: p.id, name: p.name, sizes: p.sizes.map((s) => ({ id: s.id, label: s.label })) }))
   const tel = telHref(quote.phone)
   const wa = whatsappHref(quote.phone, `Hola ${firstName(quote.name)}, te escribimos de ${site.name} sobre tu ${isQuote ? 'solicitud de presupuesto' : 'mensaje'} (${quote.number}).`)
   const reply = mailtoHref(quote.email, {
@@ -91,6 +102,18 @@ export default async function QuoteDetailPage({ params }: Props) {
             <p className="whitespace-pre-wrap break-words rounded-xl border-2 border-ink/15 bg-cream/60 p-3.5">{quote.message}</p>
           </Panel>
 
+          {isQuote && (
+            <ProposalEditor
+              quoteId={quote.id}
+              customerEmail={quote.email}
+              initial={quote.proposal}
+              locked={locked}
+              publicUrl={publicUrl}
+              products={editorProducts}
+              suggestedProductIds={quote.products}
+            />
+          )}
+
           {files.length > 0 && (
             <Panel title="Archivos adjuntos" id="adjuntos" icon={<Paperclip size={20} />}>
               <ul className="grid gap-3 sm:grid-cols-2">
@@ -128,6 +151,39 @@ export default async function QuoteDetailPage({ params }: Props) {
         </div>
 
         <div className="order-1 min-w-0 space-y-6 lg:order-2">
+          {order && (
+            <Panel title="Pedido" id="pedido" icon={<Package size={20} />} tone={locked ? 'teal' : 'white'}>
+              <p className="flex flex-wrap items-center gap-2">
+                <Link href={`/admin/pedidos/${order.id}`} className="font-display text-xl font-semibold text-violet-deep underline decoration-pink decoration-2 underline-offset-4">
+                  Pedido {order.number}
+                </Link>
+                <OrderStatusBadge status={order.status} />
+              </p>
+              <dl className="mt-3 divide-y-2 divide-ink/10 text-[0.95rem]">
+                <div className="flex items-baseline justify-between gap-3 py-1.5">
+                  <dt className="text-ink-soft">Pago</dt>
+                  <dd>
+                    <Badge tone={order.payment.status === 'captured' ? 'success' : order.payment.status === 'failed' ? 'danger' : 'warning'}>
+                      {order.payment.status === 'captured' ? 'Cobrado' : order.payment.status === 'failed' ? 'Fallido' : 'Sin cobrar'}
+                    </Badge>
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 py-1.5">
+                  <dt className="text-ink-soft">Total</dt>
+                  <dd className="font-bold tabular-nums">{formatEUR(order.totalCents)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3 py-1.5">
+                  <dt className="text-ink-soft">{order.payment.paidAt ? 'Pagado el' : 'Creado el'}</dt>
+                  <dd className="font-bold">{adminDateTime(order.payment.paidAt ?? order.createdAt)}</dd>
+                </div>
+              </dl>
+              {!locked && (
+                <p className="mt-3 text-sm text-ink-soft">
+                  Ese pedido está cancelado: la propuesta se puede modificar y el cliente volver a aceptarla desde el mismo enlace.
+                </p>
+              )}
+            </Panel>
+          )}
           <Panel title="Contacto" id="contacto" icon={<Building2 size={20} />}>
             <p className="text-lg font-extrabold">{quote.name}</p>
             {quote.company && <p className="text-ink-soft">{quote.company}</p>}
