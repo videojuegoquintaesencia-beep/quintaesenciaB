@@ -38,7 +38,11 @@ export function useSettingsSection<S extends SettingsSection>({
   // Si hay cambios sin guardar, el navegador pide confirmación antes de cerrar o recargar la pestaña.
   useEffect(() => {
     if (!dirty) return
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      // Los navegadores antiguos (Chrome < 119) solo muestran el aviso si se asigna returnValue.
+      event.returnValue = true
+    }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])

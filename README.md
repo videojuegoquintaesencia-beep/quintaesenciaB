@@ -128,8 +128,8 @@ Todas están documentadas en `.env.example`.
    de las funciones permite subidas de ese tamaño y haz una prueba con una foto grande en tu entorno real.
 7. **Arranque.** Al arrancar en producción el servidor escribe en el registro los problemas de configuración que
    detecta (contraseña o secreto débiles, `NEXT_PUBLIC_SITE_URL` sin definir, datos del titular o de contacto que siguen
-   siendo de ejemplo tras aplicar lo guardado en el panel, `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin
-   configurar…). Léelo.
+   siendo de ejemplo tras aplicar lo guardado en el panel, email de contacto vacío sin `ADMIN_NOTIFY_EMAIL` ni `MAIL_FROM`,
+   `TRUSTED_PROXY_HOPS` sin definir, SMTP o webhook sin configurar…). Léelo.
 
 Los límites de peticiones de subidas, checkout y formularios viven en memoria de cada instancia; con varias
 instancias conviene sustituirlos por un almacén compartido (Redis/Upstash). El límite de intentos de acceso al panel

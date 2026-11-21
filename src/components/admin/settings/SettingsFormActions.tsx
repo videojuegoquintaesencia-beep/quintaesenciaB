@@ -31,13 +31,22 @@ export function SettingsFormActions({
 }) {
   const confirmRef = useRef<HTMLButtonElement>(null)
   const resetRef = useRef<HTMLButtonElement>(null)
+  const noticeRef = useRef<HTMLDivElement>(null)
   const wasConfirming = useRef(false)
+  const wasOverridden = useRef(overridden)
 
   useEffect(() => {
     if (confirmingReset) confirmRef.current?.focus()
     else if (wasConfirming.current) resetRef.current?.focus()
     wasConfirming.current = confirmingReset
   }, [confirmingReset])
+
+  // Tras restablecer, el botón que tenía el foco desaparece (la sección deja de estar personalizada): el foco pasa al
+  // mensaje de resultado en vez de perderse al principio de la página.
+  useEffect(() => {
+    if (wasOverridden.current && !overridden && document.activeElement === document.body) noticeRef.current?.focus()
+    wasOverridden.current = overridden
+  }, [overridden])
 
   return (
     <div className="space-y-4">
@@ -79,7 +88,11 @@ export function SettingsFormActions({
         </div>
       )}
 
-      {notice && <Feedback kind={notice.kind}>{notice.text}</Feedback>}
+      {notice && (
+        <div ref={noticeRef} tabIndex={-1} className="rounded-xl">
+          <Feedback kind={notice.kind}>{notice.text}</Feedback>
+        </div>
+      )}
     </div>
   )
 }

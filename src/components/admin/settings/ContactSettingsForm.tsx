@@ -103,7 +103,8 @@ export function ContactSettingsForm({ initial, overridden }: { initial: ContactS
         />
         <p className="rounded-xl bg-cream px-3 py-2 text-sm text-ink-soft">
           Un campo vacío se oculta en toda la web: no se muestra ningún dato inventado. El email conviene tenerlo siempre
-          relleno; sin él, la web y los emails remiten a la página de contacto.
+          relleno: sin él, la web y los emails remiten a la página de contacto y los avisos de pedidos, presupuestos y
+          mensajes solo te llegan si está definida la variable <code>ADMIN_NOTIFY_EMAIL</code>.
         </p>
         <SettingsFormActions
           dirty={form.dirty}
