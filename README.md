@@ -17,7 +17,7 @@ equipos y eventos**.
 | Compra | `/carrito`, `/checkout`, `/pedido/[id]`, `/seguimiento` | Precio recalculado siempre en el servidor, envío, IVA, PayPal, seguimiento por enlace con token |
 | Empresas | `/empresas`, `/contacto`, `/presupuesto/[id]` | Formulario de presupuesto con adjuntos, formulario de contacto y página de la propuesta de precio (aceptación y pago online, enlace con token) |
 | Legal | `/legal/aviso-legal`, `/legal/privacidad`, `/legal/cookies`, `/legal/condiciones` | Plantillas generales. **Deben revisarlas un profesional** |
-| Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, presupuestos y mensajes, propuesta de precio por presupuesto |
+| Administración | `/admin` | Resumen, pedidos (filtros, búsqueda, CSV), detalle con descarga de archivos de impresión, cambio de estado con email, hoja de producción imprimible, **facturas numeradas** (emisión, envío por email, rectificativa), enlaces de seguimiento por transportista, presupuestos y mensajes con propuesta de precio y pago online |
 
 ### Presupuestos con propuesta de precio y pago online
 
@@ -187,15 +187,64 @@ pedidos que nunca se pagaron, con sus datos y archivos (30 días); los plazos es
 - [ ] **Nombre y dominio**: comprueba la disponibilidad de "Pieza Única" como marca (OEPM) y como dominio, o cámbialo
       en `src/config/site.ts` y en el componente `Logo`.
 - [ ] **PayPal y SMTP** reales, y una prueba completa en sandbox.
-- [ ] **Facturas**: el checkout exige empresa y NIF/CIF a quien marca «Compro como empresa o autónomo», y los emails y las
-      condiciones dicen que se envía la factura por email. Decide cómo y cuándo las emites (y si necesitas pedir un domicilio
-      fiscal distinto del de envío: ahora se indica en la nota del pedido).
+- [ ] **Facturas**: el panel las emite y las envía por email (ver [Facturas](#facturas)), con los datos del titular de los
+      ajustes y la dirección de envío como domicilio del destinatario. Decide si quieres pedir un domicilio fiscal distinto
+      del de envío (ahora el cliente lo indicaría en la nota del pedido) y revisa con tu gestoría la serie, el formato y la
+      conservación de las facturas.
+- [ ] **Enlaces de seguimiento**: las URL de las webs de las mensajerías (`src/lib/carriers.ts`) no se han podido comprobar
+      desde el entorno de desarrollo. Abre una con un código real la primera vez que uses cada transportista.
 - [ ] **Información al cliente que solo tú puedes confirmar**: cómo se estampan las tazas (la web explica el DTF sobre prenda) y
       si son aptas para lavavajillas y microondas (ahora dice que no), el plazo de entrega a Baleares (la web dice «mensajería
       24-48 h» para todos los envíos), si estás adherida a algún sistema de arbitraje de consumo (ahora dice que no), el formato
       de hojas de reclamaciones obligatorio en tu comunidad autónoma, el plazo máximo de reembolso (14 días naturales) y la URL
       vigente de la política de cookies de PayPal.
 - [ ] **Reembolsos**: el panel registra un reembolso, pero el dinero se devuelve desde PayPal.
+
+## Facturas
+
+En el detalle de un pedido cobrado (pagado, en producción, listo, enviado o entregado) el panel tiene el bloque
+**Factura**:
+
+- **Emitir factura** (`POST /api/admin/orders/[id]/invoice`, `{ "action": "issue" }`). Asigna el siguiente número de la
+  serie del año, `F-2026-0001`, `F-2026-0002`…, con el contador `invoice:2026` de la tabla `counters`, que se incrementa
+  dentro de la misma transacción de escritura que guarda la factura: dos emisiones simultáneas nunca repiten número (y
+  `orders.invoice_number` tiene además un índice único). Es idempotente: repetir la emisión devuelve la misma factura. La
+  serie se reinicia cada año (el año es el de la fecha de emisión en hora española).
+- Se guarda en el pedido (`invoice_number`, `invoice_issued_at`, `invoice_json`) una **copia inmutable** de lo facturado:
+  emisor (datos del titular y contacto de los ajustes en ese momento), destinatario (empresa o nombre, NIF/CIF si lo hay,
+  dirección de envío), líneas con unidades, precio unitario sin IVA, base, tipo (21 %), cuota e importe, línea de envío,
+  totales, forma de pago, fecha de pago y número de pedido. Cambiar después los ajustes o el pedido no la altera.
+- **IVA**: los precios de la tienda llevan el IVA incluido. La base de cada línea es su importe dividido entre 1,21 y
+  redondeado al céntimo; la cuota es la diferencia, de modo que en cada línea base + cuota = importe, y los totales son la
+  suma de las líneas (base imponible + cuota = total exacto del pedido). El «IVA incluido» que la web calcula sobre el total
+  puede diferir de la suma por líneas en uno o dos céntimos; el documento fiscal es la factura.
+- **Ver e imprimir**: `/admin/pedidos/[id]/factura` (A4, blanco y negro; «Imprimir o guardar en PDF» usa el diálogo del
+  navegador). El cliente tiene la misma factura en `/pedido/[id]/factura?t=<token>` (mismo token que el seguimiento,
+  `noindex`, 404 sin factura o con token incorrecto) y un enlace **Descargar factura** en la página de su pedido.
+- **Enviar por email** (`{ "action": "send" }`): manda al cliente el enlace (`sendInvoiceEmail`). La emisión y el envío
+  quedan anotados en el historial del pedido.
+- **Rectificativa** (`{ "action": "rectify" }`): si un pedido con factura pasa a reembolsado o cancelado, el panel avisa y
+  permite emitir la factura rectificativa (serie `R-2026-0001`, contador `rectification:2026`) que anula la original con los
+  mismos importes en negativo y la referencia a la factura rectificada. Se guarda en el mismo `invoice_json`
+  (`{ invoice, rectification }`); el cliente la ve con `&doc=rectificativa`.
+- Pedidos con **pago de demostración**: la factura sale marcada «Demostración · sin validez».
+- El documento incluye lo que exige una factura en España: número y serie, fecha de expedición, nombre o razón social, NIF y
+  domicilio del emisor, datos del destinatario (sin NIF, solo nombre y dirección), descripción de las operaciones, base
+  imponible, tipo, cuota y total, y el pie «Factura emitida por <razón social>. Inscrita en <registro>» (el registro, si está
+  en los ajustes del titular).
+
+## Transportistas y seguimiento
+
+`src/lib/carriers.ts` tiene la lista (Correos, Correos Express, SEUR, MRW, GLS, Nacex, DHL, UPS, Entrega en mano) con la
+plantilla de URL de seguimiento de cada uno; `trackingUrlFor(transportista, código)` devuelve el enlace (código codificado
+para URL) o `null` si el transportista no se reconoce, no tiene seguimiento en línea o el código está vacío. Al marcar un
+pedido como enviado, el panel ofrece un desplegable con la lista y «Otro» (texto libre); el pedido guarda el nombre como
+texto, así que los pedidos antiguos siguen valiendo. Si hay enlace, aparece como botón en el detalle del pedido, en la
+página del cliente y en el email de «Enviado».
+
+Las URL son las públicas de cada mensajería, pero **ninguna se ha podido comprobar** desde el entorno de desarrollo (sin
+acceso a esas webs): comprueba cada una con un código real antes de confiar en ella. La de Nacex espera el código como
+`agencia/albarán` (p. ej. `0801/12345678`).
 
 ## Estructura
 
@@ -208,7 +257,7 @@ src/
     api/         checkout, PayPal, subidas, archivos, presupuestos, contacto, admin
   components/    ui, mockups (ilustraciones SVG), editor, cart, checkout, admin, catalog, home, content, site
   config/        site.ts (negocio) y products.ts (catálogo, zonas y tarifas)
-  lib/           pricing, design, pedidos, base de datos, auth, emails, PayPal, límites de peticiones…
+  lib/           pricing, design, pedidos, facturas, transportistas, base de datos, auth, emails, PayPal, límites de peticiones…
   proxy.ts       protege /admin y /api/admin (en Next.js 16 sustituye a middleware.ts)
 scripts/         seed-demo.mjs (datos de ejemplo para el panel)
 ```

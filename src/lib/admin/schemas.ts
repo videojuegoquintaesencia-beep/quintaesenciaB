@@ -39,6 +39,11 @@ export const trackingSchema = z.object({
   notify: z.boolean({ error: INVALID }).default(false),
 })
 
+/** Acción sobre la factura de un pedido: emitirla, enviarla por email o emitir la rectificativa. */
+export const invoiceActionSchema = z.object({
+  action: z.enum(['issue', 'send', 'rectify'], { error: 'Acción no válida' }).default('issue'),
+})
+
 export const quoteUpdateSchema = z
   .object({
     status: z.enum(QUOTE_STATUSES, { error: 'Estado no válido' }).optional(),

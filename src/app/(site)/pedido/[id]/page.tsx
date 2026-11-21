@@ -1,4 +1,4 @@
-import { PartyPopper } from 'lucide-react'
+import { ExternalLink, FileText, PartyPopper } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -9,8 +9,10 @@ import { OrderTimeline } from '@/components/checkout/OrderTimeline'
 import { Badge } from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 import { site } from '@/config/site'
-import { formatDateTime } from '@/lib/format'
+import { trackingUrlFor } from '@/lib/carriers'
+import { formatDate, formatDateTime } from '@/lib/format'
 import { isValidId } from '@/lib/ids'
+import { getInvoiceRecord } from '@/lib/invoices'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from '@/lib/order-status'
 import { getOrderByToken, type Order } from '@/lib/orders'
 
@@ -52,6 +54,10 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
   const thanks = justPaid(order)
   const pending = order.status === 'pending_payment'
   const a = order.shipping
+  const trackingUrl = trackingUrlFor(order.carrier, order.trackingCode)
+  const invoice = pending ? null : await getInvoiceRecord(order.id)
+  const invoiceHref = (doc: 'invoice' | 'rectification') =>
+    `/pedido/${order.id}/factura?t=${order.publicToken}${doc === 'rectification' ? '&doc=rectificativa' : ''}`
 
   return (
     <div className="container-pop py-10 sm:py-14">
@@ -109,10 +115,19 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
               {a.postalCode} {a.city} ({a.province})
             </address>
             {order.trackingCode ? (
-              <p className="mt-4 rounded-2xl border-2 border-ink bg-teal-soft p-3">
-                <strong>Seguimiento del envío:</strong> {order.carrier ?? 'Mensajería'} ·{' '}
-                <span className="font-mono">{order.trackingCode}</span>
-              </p>
+              <div className="mt-4 rounded-2xl border-2 border-ink bg-teal-soft p-3">
+                <p>
+                  <strong>Seguimiento del envío:</strong> {order.carrier ?? 'Mensajería'} ·{' '}
+                  <span className="font-mono">{order.trackingCode}</span>
+                </p>
+                {trackingUrl && (
+                  <a href={trackingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm mt-3">
+                    <ExternalLink size={16} aria-hidden="true" />
+                    Seguir mi envío en {order.carrier}
+                    <span className="sr-only"> (se abre en una pestaña nueva)</span>
+                  </a>
+                )}
+              </div>
             ) : (
               <p className="mt-4 text-sm text-ink-soft">
                 Cuando enviemos tu pedido verás aquí el código de seguimiento y te avisaremos por email.
@@ -125,6 +140,38 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
             )}
             {order.customerNote && <p className="mt-2 text-sm text-ink-soft">Tu nota: {order.customerNote}</p>}
           </section>
+
+          {invoice && (
+            <section className="card p-5 sm:p-6" aria-labelledby="pedido-factura">
+              <h2 id="pedido-factura" className="mb-3 text-2xl">
+                Factura
+              </h2>
+              <p>
+                {invoice.rectification ? (
+                  <>
+                    La factura <strong>{invoice.invoice.number}</strong> quedó anulada por la factura rectificativa{' '}
+                    <strong>{invoice.rectification.number}</strong> del {formatDate(invoice.rectification.issuedAt)}.
+                  </>
+                ) : (
+                  <>
+                    Factura <strong>{invoice.invoice.number}</strong>, emitida el {formatDate(invoice.invoice.issuedAt)}. Puedes verla,
+                    imprimirla o guardarla en PDF.
+                  </>
+                )}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <ButtonLink href={invoiceHref(invoice.rectification ? 'rectification' : 'invoice')} variant="secondary" size="sm">
+                  <FileText size={16} aria-hidden="true" />
+                  {invoice.rectification ? 'Descargar factura rectificativa' : 'Descargar factura'}
+                </ButtonLink>
+                {invoice.rectification && (
+                  <ButtonLink href={invoiceHref('invoice')} variant="plain" size="sm">
+                    Ver la factura anulada
+                  </ButtonLink>
+                )}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="space-y-6">

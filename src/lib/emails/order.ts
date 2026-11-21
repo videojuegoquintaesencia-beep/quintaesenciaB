@@ -5,8 +5,10 @@
  */
 import 'server-only'
 import { site } from '@/config/site'
+import { trackingUrlFor } from '../carriers'
 import { absoluteUrl, adminNotifyAddress, emailShell, escapeHtml as esc, ownerLine, sendMail, type MailResult } from '../email'
-import { formatEUR, unidades } from '../format'
+import { formatDate, formatEUR, unidades } from '../format'
+import type { InvoiceDocument, InvoiceRecord } from '../invoice-document'
 import { isQuoteItem, orderItemTitle, quoteLineNote } from '../order-items'
 import { ORDER_STATUS_CUSTOMER_TEXT, ORDER_STATUS_LABEL } from '../order-status'
 import { ENTITY_WORD } from './names'
@@ -15,6 +17,16 @@ import type { Order, OrderItem } from '../orders'
 /** Enlace público de seguimiento del pedido (incluye el token secreto). */
 export function orderTrackingUrl(order: Pick<Order, 'id' | 'publicToken'>): string {
   return absoluteUrl(`/pedido/${order.id}?t=${order.publicToken}`)
+}
+
+/** Enlace público de la factura (o de la rectificativa) del pedido, con el mismo token que el seguimiento. */
+export function invoiceUrl(order: Pick<Order, 'id' | 'publicToken'>, kind: InvoiceDocument['kind'] = 'invoice'): string {
+  return absoluteUrl(`/pedido/${order.id}/factura?t=${order.publicToken}${kind === 'rectification' ? '&doc=rectificativa' : ''}`)
+}
+
+/** Botón secundario (blanco) para una segunda acción en el email, con el mismo estilo que el principal. */
+function secondaryButton(label: string, url: string): string {
+  return `<p style="margin:16px 0 0"><a href="${esc(url)}" style="display:inline-block;background:#ffffff;color:#1b1340;font-weight:800;text-decoration:none;padding:12px 22px;border:2px solid #1b1340;border-radius:999px;box-shadow:3px 3px 0 #1b1340">${esc(label)}</a></p>`
 }
 
 const MUTED = '#4a4270'
@@ -182,8 +194,12 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
   const url = orderTrackingUrl(order)
   const label = ORDER_STATUS_LABEL[order.status]
   const body = ORDER_STATUS_CUSTOMER_TEXT[order.status]
+  // Con un transportista conocido, el código va acompañado de un botón que abre su web de seguimiento.
+  const trackingLink = trackingUrlFor(order.carrier, order.trackingCode)
   const tracking = order.trackingCode
-    ? `<p style="margin:14px 0 0"><strong>Seguimiento del envío:</strong> ${esc(order.carrier ?? 'Mensajería')} · <span style="font-family:monospace">${esc(order.trackingCode)}</span></p>`
+    ? `<p style="margin:14px 0 0"><strong>Seguimiento del envío:</strong> ${esc(order.carrier ?? 'Mensajería')} · <span style="font-family:monospace">${esc(order.trackingCode)}</span></p>${
+        trackingLink ? secondaryButton(`Seguir mi envío en ${order.carrier ?? 'la web del transportista'}`, trackingLink) : ''
+      }`
     : ''
   const note = opts.note
     ? `<p style="margin:14px 0 0;background:#fff8ec;border:2px solid #1b1340;border-radius:12px;padding:12px 14px">${esc(opts.note)}</p>`
@@ -205,6 +221,7 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
     demo ? '(Pedido de demostración: no se ha cobrado nada.)' : '',
     body,
     order.trackingCode ? `Seguimiento del envío: ${order.carrier ?? 'Mensajería'} ${order.trackingCode}` : '',
+    trackingLink ? `Seguir el envío: ${trackingLink}` : '',
     opts.note ? `\n${opts.note}` : '',
     `\nVer mi pedido: ${url}`,
   ]
@@ -213,6 +230,55 @@ export async function sendOrderStatusUpdate(order: Order, opts: { note?: string 
   return sendMail({
     to: order.email,
     subject: `Pedido ${order.number}: ${label} — ${site.name}`,
+    html,
+    text,
+    replyTo: site.contact.email || undefined,
+  })
+}
+
+/* ───────────── Factura ───────────── */
+
+/**
+ * Envía al cliente el enlace a su factura (y, si existe, a la rectificativa que la anula). La factura no va
+ * adjunta: se abre con el mismo token secreto que el seguimiento y desde ahí se imprime o se guarda en PDF.
+ */
+export async function sendInvoiceEmail(order: Order, record: InvoiceRecord): Promise<MailResult> {
+  const rect = record.rectification
+  const doc = rect ?? record.invoice
+  const what = rect ? 'factura rectificativa' : 'factura'
+  const url = invoiceUrl(order, doc.kind)
+  const demo = doc.payment.demo
+  const demoHtml = demo
+    ? `<p style="margin:0 0 12px;background:#fff0bd;border:2px solid #1b1340;border-radius:12px;padding:10px 14px;font-weight:700">Pedido de demostración: esta factura no tiene validez.</p>`
+    : ''
+  const rectHtml = rect
+    ? `<p style="margin:12px 0 0">Esta factura rectificativa <strong>anula la factura ${esc(record.invoice.number)}</strong> (${esc(formatDate(record.invoice.issuedAt))}) por el importe total del pedido. ${esc(rect.rectifies?.reason ?? '')}</p>${secondaryButton('Ver la factura anulada', invoiceUrl(order, 'invoice'))}`
+    : ''
+  const html = await emailShell({
+    title: `Tu ${what} ${doc.number}`,
+    preheader: `${rect ? 'Factura rectificativa' : 'Factura'} del pedido ${order.number} · ${formatEUR(doc.totals.grossCents)}`,
+    bodyHtml: `${demoHtml}
+      <p style="margin:0">Hola ${esc(firstName(order))}, aquí tienes la ${what} <strong>${esc(doc.number)}</strong> de tu pedido <strong>${esc(order.number)}</strong>, emitida el ${esc(formatDate(doc.issuedAt))} por un total de <strong>${esc(formatEUR(doc.totals.grossCents))}</strong> (IVA incluido).</p>
+      <p style="margin:12px 0 0">Puedes verla, imprimirla o guardarla en PDF desde el botón de abajo. El enlace es personal: no lo compartas.</p>
+      ${rectHtml}
+      <p style="margin:18px 0 0;font-size:14px;color:${MUTED}">Si algún dato de la factura no es correcto, responde a este email indicando tu número de pedido.</p>`,
+    ctaLabel: rect ? 'Ver la factura rectificativa' : 'Descargar mi factura',
+    ctaUrl: url,
+  })
+  const text = [
+    `Hola ${firstName(order)}, aquí tienes la ${what} ${doc.number} de tu pedido ${order.number}.`,
+    demo ? '(Pedido de demostración: esta factura no tiene validez.)' : '',
+    `Emitida el ${formatDate(doc.issuedAt)} · Total ${formatEUR(doc.totals.grossCents)} (IVA incluido)`,
+    rect ? `Anula la factura ${record.invoice.number}. ${rect.rectifies?.reason ?? ''}\nFactura anulada: ${invoiceUrl(order, 'invoice')}` : '',
+    `\nVer, imprimir o guardar en PDF: ${url}`,
+    'El enlace es personal: no lo compartas.',
+    `Dudas: ${site.contact.email}`,
+  ]
+    .filter((l) => l !== '')
+    .join('\n')
+  return sendMail({
+    to: order.email,
+    subject: `${rect ? 'Factura rectificativa' : 'Factura'} ${doc.number} del pedido ${order.number} — ${site.name}`,
     html,
     text,
     replyTo: site.contact.email || undefined,
